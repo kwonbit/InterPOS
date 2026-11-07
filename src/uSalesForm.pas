@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, System.Math, Data.DB,
+  System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils, Data.DB,
   FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs, Vcl.CheckLst;
 
@@ -36,6 +36,7 @@ type
     FCartGrid: TStringGrid;
     FTotalLabel: TLabel;
     FStatusLabel: TLabel;
+  FPaymentButton: TButton;
     procedure LoadTables;
     procedure LoadCategories;
     procedure LoadMenus(ACategoryID: Integer);
@@ -45,6 +46,8 @@ type
     procedure ChangeQuantity(ADelta: Integer);
     procedure RemoveSelected;
     procedure SaveOrder;
+    procedure PaymentClick(Sender: TObject);
+    procedure ProcessPayment;
     procedure QuantityPlusClick(Sender: TObject);
     procedure QuantityMinusClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
@@ -197,6 +200,16 @@ begin
   Btn.Caption := '주문 저장';
   Btn.Font.Style := [fsBold];
   Btn.OnClick := SaveClick;
+
+  FPaymentButton := TButton.Create(Self);
+  FPaymentButton.Parent := ButtonPanel;
+  FPaymentButton.Left := 1060;
+  FPaymentButton.Top := 7;
+  FPaymentButton.Width := 100;
+  FPaymentButton.Height := 38;
+  FPaymentButton.Caption := '결제';
+  FPaymentButton.Font.Style := [fsBold];
+  FPaymentButton.OnClick := PaymentClick;
 
   RefreshCart;
 end;
@@ -682,6 +695,211 @@ begin
     on E: Exception do
       MessageDlg('주문 저장에 실패했습니다: ' + E.Message, mtError, [mbOK], 0);
   end;
+end;
+
+procedure TfrmSales.PaymentClick(Sender: TObject);
+begin
+  try
+    ProcessPayment;
+  except
+    on E: Exception do
+      MessageDlg('결제 처리에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmSales.ProcessPayment;
+var
+  OrderID: Int64;
+  OrderNo: string;
+  OrderTotal, PaidAmount, RemainingAmount, ReceivedAmount: Currency;
+  PaymentID: Int64;
+  Q: TFDQuery;
+  DialogForm: TForm;
+  MethodGroup: TRadioGroup;
+  AmountLabel, ReceivedLabel, ChangeLabel: TLabel;
+  ReceivedEdit: TEdit;
+  OkButton, CancelButton: TButton;
+  MethodCode: string;
+begin
+  if SelectedTableID = 0 then
+    raise Exception.Create('먼저 테이블을 선택해 주세요.');
+  if Length(FCart) > 0 then
+    raise Exception.Create('장바구니에 저장하지 않은 메뉴가 있습니다. 먼저 주문 저장을 해주세요.');
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID, ORDER_NO, TOTAL_AMOUNT ' +
+      'FROM POS_ORDER WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+      'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+      'ORDER BY ORDERED_AT DESC';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('선택한 테이블에 결제할 진행 중 주문이 없습니다.');
+    OrderID := Q.FieldByName('ORDER_ID').AsLargeInt;
+    OrderNo := Q.FieldByName('ORDER_NO').AsString;
+    OrderTotal := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
+    Q.Close;
+
+    Q.SQL.Text := 'SELECT COALESCE(SUM(PAYMENT_AMOUNT), 0) FROM POS_PAYMENT ' +
+      'WHERE ORDER_ID=:ORDER_ID';
+    Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+    Q.Open;
+    PaidAmount := Q.Fields[0].AsCurrency;
+    Q.Close;
+  finally
+    Q.Free;
+  end;
+
+  RemainingAmount := OrderTotal - PaidAmount;
+  if RemainingAmount <= 0 then
+    raise Exception.Create('이미 결제가 완료된 주문입니다.');
+
+  DialogForm := TForm.Create(nil);
+  try
+    DialogForm.Caption := '주문 결제';
+    DialogForm.Font.Name := Font.Name;
+    DialogForm.Position := poScreenCenter;
+    DialogForm.BorderStyle := bsDialog;
+    DialogForm.Width := 390;
+    DialogForm.Height := 300;
+
+    AmountLabel := TLabel.Create(DialogForm);
+    AmountLabel.Parent := DialogForm;
+    AmountLabel.Left := 24;
+    AmountLabel.Top := 18;
+    AmountLabel.Caption := '결제할 금액: ' + FormatCurr('#,##0', RemainingAmount) + '원';
+    AmountLabel.Font.Size := 14;
+    AmountLabel.Font.Style := [fsBold];
+
+    MethodGroup := TRadioGroup.Create(DialogForm);
+    MethodGroup.Parent := DialogForm;
+    MethodGroup.Left := 24;
+    MethodGroup.Top := 55;
+    MethodGroup.Width := 330;
+    MethodGroup.Height := 70;
+    MethodGroup.Caption := '결제 수단';
+    MethodGroup.Items.Add('현금');
+    MethodGroup.Items.Add('카드');
+    MethodGroup.ItemIndex := 0;
+
+    ReceivedLabel := TLabel.Create(DialogForm);
+    ReceivedLabel.Parent := DialogForm;
+    ReceivedLabel.Left := 24;
+    ReceivedLabel.Top := 142;
+    ReceivedLabel.Caption := '받은 현금';
+
+    ReceivedEdit := TEdit.Create(DialogForm);
+    ReceivedEdit.Parent := DialogForm;
+    ReceivedEdit.Left := 110;
+    ReceivedEdit.Top := 137;
+    ReceivedEdit.Width := 180;
+    ReceivedEdit.Text := FormatCurr('0', RemainingAmount);
+
+    ChangeLabel := TLabel.Create(DialogForm);
+    ChangeLabel.Parent := DialogForm;
+    ChangeLabel.Left := 24;
+    ChangeLabel.Top := 174;
+    ChangeLabel.Caption := '현금 선택 시 받은 금액을 입력하세요.';
+
+    OkButton := TButton.Create(DialogForm);
+    OkButton.Parent := DialogForm;
+    OkButton.Left := 160;
+    OkButton.Top := 215;
+    OkButton.Width := 90;
+    OkButton.Caption := '결제 완료';
+    OkButton.ModalResult := mrOk;
+    OkButton.Default := True;
+
+    CancelButton := TButton.Create(DialogForm);
+    CancelButton.Parent := DialogForm;
+    CancelButton.Left := 260;
+    CancelButton.Top := 215;
+    CancelButton.Width := 90;
+    CancelButton.Caption := '취소';
+    CancelButton.ModalResult := mrCancel;
+    CancelButton.Cancel := True;
+
+    if DialogForm.ShowModal <> mrOk then Exit;
+    if MethodGroup.ItemIndex = 0 then
+    begin
+      MethodCode := 'CASH';
+      if not TryStrToCurr(Trim(ReceivedEdit.Text), ReceivedAmount) then
+        raise Exception.Create('받은 현금 금액을 올바르게 입력해 주세요.');
+      if ReceivedAmount < RemainingAmount then
+        raise Exception.Create('받은 현금이 결제 금액보다 적습니다.');
+    end
+    else
+    begin
+      MethodCode := 'CARD';
+      ReceivedAmount := RemainingAmount;
+    end;
+  finally
+    DialogForm.Free;
+  end;
+
+  dmDatabase.Connection.StartTransaction;
+  try
+    Q := TFDQuery.Create(nil);
+    try
+      Q.Connection := dmDatabase.Connection;
+      Q.SQL.Text := 'SELECT ORDER_STATUS, TOTAL_AMOUNT FROM POS_ORDER ' +
+        'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID WITH LOCK';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.Open;
+      if Q.IsEmpty or (Q.FieldByName('ORDER_STATUS').AsString <> 'OPEN') then
+        raise Exception.Create('주문 상태가 변경되었습니다. 주문을 다시 확인해 주세요.');
+      OrderTotal := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
+      Q.Close;
+
+      Q.SQL.Text := 'SELECT COALESCE(SUM(PAYMENT_AMOUNT), 0) FROM POS_PAYMENT ' +
+        'WHERE ORDER_ID=:ORDER_ID';
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.Open;
+      PaidAmount := Q.Fields[0].AsCurrency;
+      Q.Close;
+      RemainingAmount := OrderTotal - PaidAmount;
+      if RemainingAmount <= 0 then
+        raise Exception.Create('이미 결제가 완료된 주문입니다.');
+      if (MethodCode = 'CASH') and (ReceivedAmount < RemainingAmount) then
+        raise Exception.Create('주문 금액이 변경되었습니다. 받은 현금이 결제 금액보다 적습니다. 다시 결제해 주세요.');
+
+      PaymentID := NextSequenceValue('GEN_POS_PAYMENT_ID');
+      Q.SQL.Text := 'INSERT INTO POS_PAYMENT ' +
+        '(PAYMENT_ID, ORDER_ID, PAYMENT_METHOD, PAYMENT_AMOUNT) ' +
+        'VALUES (:ID, :ORDER_ID, :METHOD, :AMOUNT)';
+      Q.ParamByName('ID').AsLargeInt := PaymentID;
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.ParamByName('METHOD').AsString := MethodCode;
+      Q.ParamByName('AMOUNT').AsCurrency := RemainingAmount;
+      Q.ExecSQL;
+
+      Q.SQL.Text := 'UPDATE POS_ORDER SET ORDER_STATUS=''PAID'' ' +
+        'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.ExecSQL;
+    finally
+      Q.Free;
+    end;
+    dmDatabase.Connection.Commit;
+  except
+    dmDatabase.Connection.Rollback;
+    raise;
+  end;
+
+  UpdateTableStatus;
+  MessageDlg('결제가 완료되었습니다.' + sLineBreak +
+    '주문번호: ' + OrderNo + sLineBreak +
+    '결제수단: ' + IfThen(MethodCode = 'CASH', '현금', '카드') + sLineBreak +
+    '결제금액: ' + FormatCurr('#,##0', RemainingAmount) + '원' +
+    IfThen(MethodCode = 'CASH', sLineBreak + '거스름돈: ' +
+      FormatCurr('#,##0', ReceivedAmount - RemainingAmount) + '원', ''),
+    mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSales.SaveOrder;
