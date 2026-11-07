@@ -114,7 +114,7 @@ var
 begin
   if Trim(ASettings.PortName) = '' then
     raise Exception.Create('주방 프린터 COM 포트가 설정되지 않았습니다.');
-  DeviceName := '\\.' + '\\' + UpperCase(Trim(ASettings.PortName));
+  DeviceName := '\\.' + '\' + UpperCase(Trim(ASettings.PortName));
   Handle := CreateFile(PChar(DeviceName), GENERIC_WRITE, 0, nil,
     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   if Handle = INVALID_HANDLE_VALUE then
