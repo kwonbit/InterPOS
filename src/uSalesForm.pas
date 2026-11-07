@@ -36,6 +36,10 @@ type
     procedure ChangeQuantity(ADelta: Integer);
     procedure RemoveSelected;
     procedure SaveOrder;
+    procedure QuantityPlusClick(Sender: TObject);
+    procedure QuantityMinusClick(Sender: TObject);
+    procedure RemoveClick(Sender: TObject);
+    procedure SaveClick(Sender: TObject);
     function SelectedTableID: Integer;
     function NextSequenceValue(const ASequenceName: string): Int64;
     function CartTotal: Currency;
@@ -141,7 +145,7 @@ begin
   Btn.Width := 90;
   Btn.Height := 38;
   Btn.Caption := '수량 +';
-  Btn.OnClick := procedure(Sender: TObject) begin ChangeQuantity(1); end;
+  Btn.OnClick := QuantityPlusClick;
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
@@ -150,7 +154,7 @@ begin
   Btn.Width := 90;
   Btn.Height := 38;
   Btn.Caption := '수량 -';
-  Btn.OnClick := procedure(Sender: TObject) begin ChangeQuantity(-1); end;
+  Btn.OnClick := QuantityMinusClick;
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
@@ -159,7 +163,7 @@ begin
   Btn.Width := 90;
   Btn.Height := 38;
   Btn.Caption := '삭제';
-  Btn.OnClick := procedure(Sender: TObject) begin RemoveSelected; end;
+  Btn.OnClick := RemoveClick;
 
   FTotalLabel := TLabel.Create(Self);
   FTotalLabel.Parent := ButtonPanel;
@@ -178,7 +182,7 @@ begin
   Btn.Height := 38;
   Btn.Caption := '주문 저장';
   Btn.Font.Style := [fsBold];
-  Btn.OnClick := procedure(Sender: TObject) begin SaveOrder; end;
+  Btn.OnClick := SaveClick;
 
   RefreshCart;
 end;
@@ -245,7 +249,7 @@ begin
       X := X + 138;
       Q.Next;
     end;
-    if Q.RecordCount > 0 then
+    if not Q.IsEmpty then
     begin
       Q.First;
       LoadMenus(Q.FieldByName('CATEGORY_ID').AsInteger);
@@ -427,6 +431,31 @@ begin
     Result := Q.Fields[0].AsLargeInt;
   finally
     Q.Free;
+  end;
+end;
+
+procedure TfrmSales.QuantityPlusClick(Sender: TObject);
+begin
+  ChangeQuantity(1);
+end;
+
+procedure TfrmSales.QuantityMinusClick(Sender: TObject);
+begin
+  ChangeQuantity(-1);
+end;
+
+procedure TfrmSales.RemoveClick(Sender: TObject);
+begin
+  RemoveSelected;
+end;
+
+procedure TfrmSales.SaveClick(Sender: TObject);
+begin
+  try
+    SaveOrder;
+  except
+    on E: Exception do
+      MessageDlg('주문 저장에 실패했습니다: ' + E.Message, mtError, [mbOK], 0);
   end;
 end;
 
