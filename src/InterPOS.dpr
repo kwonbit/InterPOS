@@ -20,10 +20,10 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.Title := 'InterPOS';
-  Application.CreateForm(TdmDatabase, dmDatabase);
+  Application.CreateForm(TdmDatabase, uDatabase.dmDatabase);
 
   try
-    dmDatabase.Connect;
+    uDatabase.dmDatabase.Connect;
   except
     on E: Exception do
     begin
