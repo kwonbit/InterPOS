@@ -21,7 +21,7 @@ function AuthenticateEmployee(AConnection: TFDConnection; AStoreID: Integer;
   const ALoginID, APassword: string; out ASession: TEmployeeSession): Boolean;
 function RoleDisplayName(const ARoleCode: string): string;
 function CanManageMenus(const ARoleCode: string): Boolean;
-function CanManageEmployees(const ARoleCode: string): Boolean;
+function CanManageEmployees(const ARoleCode: string): Boolean;\nprocedure AddEmployee(AConnection: TFDConnection; const AActor: TEmployeeSession;\n  const AEmployeeName, ALoginID, APassword, ARoleCode: string);\nprocedure UpdateEmployeePassword(AConnection: TFDConnection;\n  const AActor: TEmployeeSession; AEmployeeID: Integer; const ANewPassword: string);\nprocedure DeactivateEmployee(AConnection: TFDConnection;\n  const AActor: TEmployeeSession; AEmployeeID: Integer);
 
 implementation
 
