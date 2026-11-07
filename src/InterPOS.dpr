@@ -1,4 +1,4 @@
-program InterPOS;
+﻿program InterPOS;
 uses
   System.SysUtils,
   System.UITypes,
