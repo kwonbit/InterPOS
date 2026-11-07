@@ -150,6 +150,9 @@
         <DCCReference Include="uMainForm.pas">
             <Form>frmMain</Form>
         </DCCReference>
+        <DCCReference Include="uMasterDataForm.pas">
+            <Form>frmMasterData</Form>
+        </DCCReference>
         <DCCReference Include="uDatabase.pas">
             <Form>dmDatabase</Form>
             <DesignClass>TDataModule</DesignClass>
