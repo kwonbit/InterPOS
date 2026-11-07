@@ -1,10 +1,10 @@
-unit uSalesForm;
+﻿unit uSalesForm;
 
 interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, Data.DB,
-  FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
+  FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs;
 
 type
