@@ -17,9 +17,11 @@ type
     btnMenu: TButton;
     btnEmployee: TButton;
     btnClose: TButton;
+    btnKitchen: TButton;
     lblStatus: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
+    procedure btnKitchenClick(Sender: TObject);
     procedure btnSalesClick(Sender: TObject);
     procedure btnTableClick(Sender: TObject);
     procedure btnMenuClick(Sender: TObject);
@@ -37,7 +39,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm;
 
 {$R *.dfm}
 
@@ -70,6 +72,8 @@ begin
   btnEmployee.Caption := '직원 관리';
   btnClose.Font.Name := Font.Name;
   btnClose.Caption := '로그아웃';
+  btnKitchen.Font.Name := Font.Name;
+  btnKitchen.Caption := '주방 주문현황';
   UpdateDatabaseStatus;
 end;
 
@@ -96,6 +100,18 @@ begin
     SalesForm.ShowModal;
   finally
     SalesForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnKitchenClick(Sender: TObject);
+var
+  KitchenForm: TfrmKitchenDisplay;
+begin
+  KitchenForm := TfrmKitchenDisplay.CreateKitchen(Self, dmDatabase.StoreID);
+  try
+    KitchenForm.ShowModal;
+  finally
+    KitchenForm.Free;
   end;
 end;
 

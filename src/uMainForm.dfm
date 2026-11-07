@@ -105,5 +105,16 @@
       TabOrder = 4
       OnClick = btnCloseClick
     end
+    object btnKitchen: TButton
+      Left = 192
+      Top = 160
+      Width = 220
+      Height = 48
+      Caption = 'Kitchen Orders'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Name = 'Arial'
+      TabOrder = 5
+      OnClick = btnKitchenClick
+    end
   end
 end
