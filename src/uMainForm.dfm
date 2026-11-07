@@ -26,6 +26,14 @@ object frmMain: TfrmMain
       Font.Style = [fsBold]
       ParentFont = False
     end
+    object lblUserInfo: TLabel
+      Left = 600
+      Top = 26
+      Width = 380
+      Height = 24
+      Alignment = taRightJustify
+      Caption = ''
+    end
   end
   object pnlWork: TPanel
     Align = alClient
@@ -63,6 +71,16 @@ object frmMain: TfrmMain
       Caption = #$C885#$B8CC
       TabOrder = 3
       OnClick = btnCloseClick
+    end
+    object btnEmployees: TButton
+      Left = 272
+      Top = 160
+      Width = 220
+      Height = 48
+      Caption = #$C9C1#$C6D0 #$AD00#$B9AC
+      TabOrder = 4
+      Visible = False
+      OnClick = btnEmployeesClick
     end
     object lblStatus: TLabel
       Left = 32
