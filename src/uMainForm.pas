@@ -127,7 +127,7 @@ begin
   MasterForm := TfrmMasterData.Create(Self);
   try
     MasterForm.SetStoreID(dmDatabase.StoreID);
-    MasterForm.ShowPage(1);
+    MasterForm.ShowPage(2);
     MasterForm.ShowModal;
   finally
     MasterForm.Free;
