@@ -19,8 +19,7 @@ type
     procedure BuildUI;
     procedure RefreshTickets;
     procedure RefreshItems;
-    procedure GridSelectCell(Sender: TObject; ACol, ARow: Integer;
-      var CanSelect: Boolean);
+    procedure GridClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure StatusClick(Sender: TObject);
     procedure ConfigurePrinterClick(Sender: TObject);
@@ -125,7 +124,7 @@ begin
   FTicketGrid.ColWidths[2] := 90;
   FTicketGrid.ColWidths[3] := 115;
   FTicketGrid.ColWidths[4] := 90;
-  FTicketGrid.OnSelectCell := GridSelectCell;
+  FTicketGrid.OnClick := GridClick;
 
   RightPanel := TPanel.Create(Self);
   RightPanel.Parent := Self;
@@ -289,7 +288,13 @@ var
   Row: Integer;
 begin
   FItemGrid.RowCount := 2;
-  if SelectedTicketID = 0 then Exit;
+  if SelectedTicketID = 0 then
+  begin
+    FItemGrid.Cells[0, 1] := '';
+    FItemGrid.Cells[1, 1] := '';
+    FItemGrid.Cells[2, 1] := '';
+    Exit;
+  end;
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
@@ -325,10 +330,8 @@ begin
   end;
 end;
 
-procedure TfrmKitchenDisplay.GridSelectCell(Sender: TObject; ACol, ARow: Integer;
-  var CanSelect: Boolean);
+procedure TfrmKitchenDisplay.GridClick(Sender: TObject);
 begin
-  CanSelect := True;
   if not FRefreshing then
     RefreshItems;
 end;
