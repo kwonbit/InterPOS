@@ -8,7 +8,7 @@ object frmMain: TfrmMain
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -16
-  Font.Name = #$B9D1#$C740 #$ACE0#$B515
+  Font.Name = #$B9D1#$C740' '#$ACE0#$B515
   Font.Style = []
   Position = poScreenCenter
   OnCreate = FormCreate
@@ -52,7 +52,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = #$D14C#$C774#$BE14 #$AD00#$B9AC
+      Caption = #$D14C#$C774#$BE14' '#$AD00#$B9AC
       TabOrder = 1
     end
     object btnMenu: TButton
@@ -60,7 +60,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = #$BA54#$B274 #$AD00#$B9AC
+      Caption = #$BA54#$B274' '#$AD00#$B9AC
       TabOrder = 2
     end
     object btnClose: TButton
@@ -77,7 +77,7 @@ object frmMain: TfrmMain
       Top = 160
       Width = 220
       Height = 48
-      Caption = #$C9C1#$C6D0 #$AD00#$B9AC
+      Caption = #$C9C1#$C6D0' '#$AD00#$B9AC
       TabOrder = 4
       Visible = False
       OnClick = btnEmployeesClick
@@ -87,7 +87,7 @@ object frmMain: TfrmMain
       Top = 560
       Width = 300
       Height = 24
-      Caption = #$B370#$C774#$D130#$BCA0#$C774#$C2A4 #$BBF8#$C5F0#$ACB0
+      Caption = #$B370#$C774#$D130#$BCA0#$C774#$C2A4' '#$BBF8#$C5F0#$ACB0
     end
   end
 end
