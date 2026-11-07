@@ -1,4 +1,5 @@
-unit uEmployeeForm;
+﻿unit uEmployeeForm;
+{$CODEPAGE UTF8}
 
 interface
 
