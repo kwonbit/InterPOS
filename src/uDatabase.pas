@@ -14,6 +14,7 @@ type
   TdmDatabase = class(TDataModule)
   private
     FConnection: TFDConnection;
+    FStoreID: Integer;
     procedure LoadConfiguration;
   public
     constructor Create(AOwner: TComponent); override;
@@ -22,6 +23,7 @@ type
     procedure Disconnect;
     function IsConnected: Boolean;
     property Connection: TFDConnection read FConnection;
+    property StoreID: Integer read FStoreID;
   end;
 
 var
@@ -50,6 +52,7 @@ var
   Ini: TIniFile;
   IniPath: string;
 begin
+  FStoreID := 1;
   IniPath := ChangeFileExt(ParamStr(0), '.ini');
   if not FileExists(IniPath) then
     Exit;
@@ -66,6 +69,7 @@ begin
       Ini.ReadString('Database', 'CharacterSet', 'UTF8');
     FConnection.Params.Values['Protocol'] :=
       Ini.ReadString('Database', 'Protocol', 'TCPIP');
+    FStoreID := Ini.ReadInteger('POS', 'StoreId', 1);
   finally
     Ini.Free;
   end;
