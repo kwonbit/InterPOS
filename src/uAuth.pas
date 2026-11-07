@@ -25,8 +25,8 @@ procedure AddEmployee(AConnection: TFDConnection; const AActor: TEmployeeSession
   const AEmployeeName, ALoginID, APassword, ARoleCode: string);
 procedure UpdateEmployeePassword(AConnection: TFDConnection;
   const AActor: TEmployeeSession; AEmployeeID: Integer; const ANewPassword: string);
-procedure DeactivateEmployee(AConnection: TFDConnection;
-  const AActor: TEmployeeSession; AEmployeeID: Integer);
+function ToggleEmployeeActive(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer): Boolean;
 
 implementation
 
@@ -362,36 +362,44 @@ begin
   end;
 end;
 
-procedure DeactivateEmployee(AConnection: TFDConnection;
-  const AActor: TEmployeeSession; AEmployeeID: Integer);
+function ToggleEmployeeActive(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer): Boolean;
 var
   Q: TFDQuery;
   TargetRole: string;
+  IsCurrentlyActive: Boolean;
 begin
   if not CanManageEmployees(AActor.RoleCode) then
-    raise Exception.Create('직원 사용 중지 권한이 없습니다.');
-  if AEmployeeID = AActor.EmployeeID then
-    raise Exception.Create('현재 로그인한 계정은 직접 중지할 수 없습니다.');
+    raise Exception.Create('직원 계정 상태 변경 권한이 없습니다.');
 
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := AConnection;
-    Q.SQL.Text := 'SELECT ROLE_CODE FROM EMPLOYEE WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    Q.SQL.Text := 'SELECT ROLE_CODE, ACTIVE_YN FROM EMPLOYEE ' +
+      'WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
     Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
     Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
     Q.Open;
     if Q.IsEmpty then
       raise Exception.Create('직원 정보를 찾을 수 없습니다.');
-    TargetRole := Q.Fields[0].AsString;
+    TargetRole := Q.FieldByName('ROLE_CODE').AsString;
+    IsCurrentlyActive := SameText(Q.FieldByName('ACTIVE_YN').AsString, 'Y');
     Q.Close;
 
     if SameText(TargetRole, 'OWNER') then
-      raise Exception.Create('점주 계정은 직원 관리 화면에서 중지할 수 없습니다.');
+      raise Exception.Create('점주 계정의 상태는 직원 관리 화면에서 변경할 수 없습니다.');
     if SameText(AActor.RoleCode, 'MANAGER') and not SameText(TargetRole, 'STAFF') then
-      raise Exception.Create('매니저는 일반 직원 계정만 중지할 수 있습니다.');
+      raise Exception.Create('매니저는 일반 직원 계정만 변경할 수 있습니다.');
+    if IsCurrentlyActive and (AEmployeeID = AActor.EmployeeID) then
+      raise Exception.Create('현재 로그인한 계정은 직접 사용 중지할 수 없습니다.');
 
-    Q.SQL.Text := 'UPDATE EMPLOYEE SET ACTIVE_YN=''N'' ' +
+    Result := not IsCurrentlyActive;
+    Q.SQL.Text := 'UPDATE EMPLOYEE SET ACTIVE_YN=:ACTIVE_YN ' +
       'WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    if Result then
+      Q.ParamByName('ACTIVE_YN').AsString := 'Y'
+    else
+      Q.ParamByName('ACTIVE_YN').AsString := 'N';
     Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
     Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
     Q.ExecSQL;
