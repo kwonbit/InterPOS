@@ -61,7 +61,10 @@ var
 begin
   if Trim(ASettings.PortName) = '' then
     raise Exception.Create('프린터 COM 포트를 입력해 주세요.');
-  if not (ASettings.BaudRate in [2400, 4800, 9600, 19200, 38400, 57600, 115200]) then
+  if not ((ASettings.BaudRate = 2400) or (ASettings.BaudRate = 4800) or
+    (ASettings.BaudRate = 9600) or (ASettings.BaudRate = 19200) or
+    (ASettings.BaudRate = 38400) or (ASettings.BaudRate = 57600) or
+    (ASettings.BaudRate = 115200)) then
     raise Exception.Create('지원하지 않는 통신 속도입니다.');
   Ini := TIniFile.Create(SettingsFileName);
   try
@@ -113,7 +116,10 @@ var
 begin
   if Trim(ASettings.PortName) = '' then
     raise Exception.Create('프린터 COM 포트가 설정되지 않았습니다.');
-  if not (ASettings.BaudRate in [2400, 4800, 9600, 19200, 38400, 57600, 115200]) then
+  if not ((ASettings.BaudRate = 2400) or (ASettings.BaudRate = 4800) or
+    (ASettings.BaudRate = 9600) or (ASettings.BaudRate = 19200) or
+    (ASettings.BaudRate = 38400) or (ASettings.BaudRate = 57600) or
+    (ASettings.BaudRate = 115200)) then
     raise Exception.Create('지원하지 않는 프린터 통신 속도입니다.');
 
   DeviceName := '\\.' + '\' + UpperCase(Trim(ASettings.PortName));
