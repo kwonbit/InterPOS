@@ -1,6 +1,7 @@
-﻿program InterPOS;
+program InterPOS;
 uses
   System.SysUtils,
+  System.UITypes,
   Vcl.Forms,
   Vcl.Dialogs,
   uMainForm in 'uMainForm.pas' {frmMain},
