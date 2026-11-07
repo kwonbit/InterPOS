@@ -386,6 +386,8 @@ begin
     TargetRole := Q.Fields[0].AsString;
     Q.Close;
 
+    if SameText(TargetRole, 'OWNER') then
+      raise Exception.Create('점주 계정은 직원 관리 화면에서 중지할 수 없습니다.');
     if SameText(AActor.RoleCode, 'MANAGER') and not SameText(TargetRole, 'STAFF') then
       raise Exception.Create('매니저는 일반 직원 계정만 중지할 수 있습니다.');
 
