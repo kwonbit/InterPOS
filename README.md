@@ -19,10 +19,11 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 2. `database/01_schema.sql`을 실행해 데이터베이스 스키마를 생성합니다.
 3. `database/02_employee_login_indexes.sql`을 실행합니다.
 4. `database/03_master_data.sql`을 실행합니다.
-5. `config/InterPOS.ini.example`을 실행 파일 옆의 `InterPOS.ini`로 복사하고 DB 접속 정보와 `[POS] StoreId`를 입력합니다.
-6. Delphi 12에서 `src/InterPOS.dpr`을 엽니다.
-7. FireDAC Firebird 드라이버와 Firebird Client DLL 설치 여부를 확인합니다.
-8. 최초 실행 시 점주 계정을 등록하고 로그인합니다.
+5. `database/04_pos_sales.sql`을 실행합니다.
+6. `config/InterPOS.ini.example`을 실행 파일 옆의 `InterPOS.ini`로 복사하고 DB 접속 정보와 `[POS] StoreId`를 입력합니다.
+7. Delphi 12에서 `src/InterPOS.dpr`을 엽니다.
+8. FireDAC Firebird 드라이버와 Firebird Client DLL 설치 여부를 확인합니다.
+9. 최초 실행 시 점주 계정을 등록하고 로그인합니다.
 
 ## 구현된 기능
 - 최초 실행 시 매장 및 점주 계정 등록
@@ -33,8 +34,11 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 테이블 등록/수정/사용 상태 관리
 - 음식 종류 등록/수정/사용 상태 관리
 - 메뉴 등록/수정/가격/설명 및 사용 상태 관리
+- POS 판매 화면에서 테이블/음식 종류/메뉴 선택
+- 장바구니 수량 변경 및 주문 합계 계산
+- 주문 헤더/품목을 Firebird 트랜잭션으로 저장
 - 매니저는 일반 직원 계정만 관리 가능
 
-로그인 및 직원 권한의 상세 내용은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)를 참고하세요. 기초정보 관리의 상세 내용은 [docs/MASTER_DATA.md](docs/MASTER_DATA.md)를 참고하세요.
+로그인 및 직원 권한의 상세 내용은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)를 참고하세요. 기초정보 관리의 상세 내용은 [docs/MASTER_DATA.md](docs/MASTER_DATA.md)를 참고하세요. POS 판매의 상세 내용은 [docs/POS_SALES.md](docs/POS_SALES.md)를 참고하세요.
 
 현재 버전은 개발 초기 단계입니다. 이 단계는 Delphi 12에서 컴파일/실행 검증이 필요하며, 실제 매장 운영 전에는 POS 판매, 결제, 프린터, 백업/복구 및 전체 업무 흐름에 대한 추가 구현과 테스트가 필요합니다.

@@ -37,7 +37,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm;
 
 {$R *.dfm}
 
@@ -87,10 +87,17 @@ begin
 end;
 
 procedure TfrmMain.btnSalesClick(Sender: TObject);
+var
+  SalesForm: TfrmSales;
 begin
-  ShowMessage('POS 판매 화면은 다음 개발 단계에서 구현합니다.');
+  SalesForm := TfrmSales.Create(Self);
+  try
+    SalesForm.SetStoreID(dmDatabase.StoreID);
+    SalesForm.ShowModal;
+  finally
+    SalesForm.Free;
+  end;
 end;
-
 
 procedure TfrmMain.btnTableClick(Sender: TObject);
 var
