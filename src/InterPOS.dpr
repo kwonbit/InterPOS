@@ -1,4 +1,5 @@
-program InterPOS;
+﻿program InterPOS;
+{$CODEPAGE UTF8}
 
 uses
   System.SysUtils,
