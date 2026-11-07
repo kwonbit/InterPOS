@@ -1,6 +1,4 @@
 ﻿unit uLoginForm;
-{$CODEPAGE UTF8}
-
 interface
 
 uses
