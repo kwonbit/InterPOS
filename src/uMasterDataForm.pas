@@ -100,7 +100,7 @@ begin
 
   Captions[0] := '등록';
   Captions[1] := '수정';
-  Captions[2] := '사용상태전환';
+  Captions[2] := '사용 상태 전환';
   for I := 0 to 2 do
   begin
     Btn := TButton.Create(Self);
@@ -130,7 +130,7 @@ begin
     end;
   except
     on E: Exception do
-      MessageDlg('기초정보처리에실패했습니다'': ' + E.Message,
+      MessageDlg('기초정보 처리에 실패했습니다: ' + E.Message,
         mtError, [mbOK], 0);
   end;
 end;
