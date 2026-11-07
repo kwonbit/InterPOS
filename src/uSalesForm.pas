@@ -733,6 +733,7 @@ var
   Settings: TReceiptPrinterSettings;
   PortText, BaudText: string;
 begin
+  try
   Settings := TReceiptPrinter.LoadSettings;
   PortText := Settings.PortName;
   BaudText := IntToStr(Settings.BaudRate);
@@ -746,6 +747,11 @@ begin
     '테스트 인쇄를 실행하시겠습니까?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
     TReceiptPrinter.TestPrint(Settings);
   MessageDlg('프린터 설정이 저장되었습니다.', mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+      MessageDlg('프린터 설정/테스트 인쇄에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TfrmSales.ReprintReceiptClick(Sender: TObject);
@@ -753,6 +759,7 @@ var
   Q: TFDQuery;
   OrderID: Int64;
 begin
+  try
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
   Q := TFDQuery.Create(nil);
@@ -772,6 +779,11 @@ begin
   end;
   TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderID);
   MessageDlg('영수증을 다시 출력했습니다.', mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+      MessageDlg('영수증 재출력에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TfrmSales.ProcessPayment;
