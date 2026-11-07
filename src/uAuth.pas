@@ -1,6 +1,4 @@
 ﻿unit uAuth;
-{$CODEPAGE UTF8}
-
 interface
 
 uses
