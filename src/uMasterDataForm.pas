@@ -219,7 +219,7 @@ end;
 procedure TfrmMasterData.AddRecord(AIndex: Integer);
 var
   NameValue, GroupValue, PriceValue, DescriptionValue, CategoryValue: string;
-  NewID, CategoryID, DisplayOrder: Integer;
+  NewID, CategoryID: Integer;
   Price: Currency;
   Q: TFDQuery;
 begin
@@ -347,6 +347,12 @@ begin
           if not InputQuery('메뉴 수정', '메뉴 이름', NameValue) then Exit;
           if not InputQuery('메뉴 수정', '음식 종류 번호', CategoryValue) then Exit;
           if not TryStrToInt(Trim(CategoryValue), CategoryID) then raise Exception.Create('음식 종류 번호가 올바르지 않습니다.');
+          Q.SQL.Text := 'SELECT COUNT(*) FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:CAT_ID AND ACTIVE_YN=''Y''';
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('CAT_ID').AsInteger := CategoryID;
+          Q.Open;
+          if Q.Fields[0].AsInteger = 0 then raise Exception.Create('사용 중인 음식 종류를 찾을 수 없습니다.');
+          Q.Close;
           if not InputQuery('메뉴 수정', '판매 가격', PriceValue) then Exit;
           if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then raise Exception.Create('판매 가격이 올바르지 않습니다.');
           if not InputQuery('메뉴 수정', '메뉴 설명', DescriptionValue) then Exit;
@@ -372,10 +378,7 @@ var
 begin
   ID := SelectedID(AIndex);
   if ID = 0 then Exit;
-  if AIndex = 0 then
-    Q := TFDQuery.Create(Self)
-  else
-    Q := TFDQuery.Create(Self);
+  Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
     case AIndex of
