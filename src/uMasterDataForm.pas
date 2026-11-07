@@ -210,7 +210,7 @@ begin
     with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_ID'; Title.Caption := '메뉴번호'; Width := 90; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_NAME'; Title.Caption := '메뉴명'; Width := 180; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식 종류'; Width := 150; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'PRICE'; Title.Caption := '판매가격'; Width := 110; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'PRICE'; Title.Caption := '판매 가격'; Width := 110; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 80; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
   end;
@@ -223,13 +223,13 @@ var
   Price: Currency;
   Q: TFDQuery;
 begin
-  NameValue := ;
-  GroupValue := ;
+  NameValue := '';
+  GroupValue := '';
   case AIndex of
     0:
       begin
-        if not InputQuery('테이블등록', '테이블이름을입력하세요''.', NameValue) then Exit;
-        if not InputQuery('테이블등록', '구역이름'' (''선택'')', GroupValue) then Exit;
+        if not InputQuery('테이블 등록', '테이블 이름을 입력하세요.', NameValue) then Exit;
+        if not InputQuery('테이블 등록', '구역 이름 (선택)', GroupValue) then Exit;
         NewID := NextID('POS_TABLE', 'TABLE_ID');
         Q := TFDQuery.Create(nil);
         try
@@ -246,7 +246,7 @@ begin
       end;
     1:
       begin
-        if not InputQuery('음식종류등록', '음식종류이름을입력하세요''.', NameValue) then Exit;
+        if not InputQuery('음식 종류 등록', '음식 종류 이름을 입력하세요.', NameValue) then Exit;
         NewID := NextID('MENU_CATEGORY', 'CATEGORY_ID');
         Q := TFDQuery.Create(nil);
         try
@@ -262,17 +262,17 @@ begin
       end;
     2:
       begin
-        if not InputQuery('메뉴등록', '메뉴이름을입력하세요''.', NameValue) then Exit;
-        CategoryValue := ;
-        if not InputQuery('메뉴등록', '음식종류번호를입력하세요'' (''음식종류탭에서확인'').', CategoryValue) then Exit;
+        if not InputQuery('메뉴 등록', '메뉴 이름을 입력하세요.', NameValue) then Exit;
+        CategoryValue := '';
+        if not InputQuery('메뉴 등록', '음식 종류 번호를 입력하세요 (음식 종류 탭에서 확인).', CategoryValue) then Exit;
         if not TryStrToInt(Trim(CategoryValue), CategoryID) then
-          raise Exception.Create('음식종류번호가올바르지않습니다''.');
+          raise Exception.Create('음식 종류 번호가 올바르지 않습니다.');
         PriceValue := '0';
-        if not InputQuery('메뉴등록', '판매가격을입력하세요''.', PriceValue) then Exit;
+        if not InputQuery('메뉴 등록', '판매 가격을 입력하세요.', PriceValue) then Exit;
         if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then
-          raise Exception.Create('판매가격을올바르게입력해주세요''.');
-        DescriptionValue := ;
-        if not InputQuery('메뉴등록', '메뉴설명'' (''선택'')', DescriptionValue) then Exit;
+          raise Exception.Create('판매 가격을 올바르게 입력해 주세요.');
+        DescriptionValue := '';
+        if not InputQuery('메뉴 등록', '메뉴 설명 (선택)', DescriptionValue) then Exit;
         Q := TFDQuery.Create(nil);
         try
           Q.Connection := dmDatabase.Connection;
@@ -281,7 +281,7 @@ begin
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
           Q.Open;
           if Q.Fields[0].AsInteger = 0 then
-            raise Exception.Create('사용중인음식종류를찾을수없습니다''.');
+            raise Exception.Create('사용 중인 음식 종류를 찾을 수 없습니다.');
           Q.Close;
           NewID := NextID('MENU_ITEM', 'MENU_ID');
           Q.SQL.Text := 'INSERT INTO MENU_ITEM (MENU_ID, STORE_ID, CATEGORY_ID, MENU_NAME, PRICE, DESCRIPTION, DISPLAY_ORDER, ACTIVE_YN) ' +
@@ -319,8 +319,8 @@ begin
           Q.ParamByName('STORE_ID').AsInteger := FStoreID;
           Q.ParamByName('ID').AsInteger := ID;
           Q.Open; NameValue := Q.Fields[0].AsString; GroupValue := Q.Fields[1].AsString; Q.Close;
-          if not InputQuery('테이블수정', '테이블이름', NameValue) then Exit;
-          if not InputQuery('테이블수정', '구역이름', GroupValue) then Exit;
+          if not InputQuery('테이블 수정', '테이블 이름', NameValue) then Exit;
+          if not InputQuery('테이블 수정', '구역 이름', GroupValue) then Exit;
           Q.SQL.Text := 'UPDATE POS_TABLE SET TABLE_NAME=:NAME, TABLE_GROUP=:GRP WHERE STORE_ID=:STORE_ID AND TABLE_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
           Q.ParamByName('GRP').AsString := Trim(GroupValue);
@@ -330,7 +330,7 @@ begin
           Q.SQL.Text := 'SELECT CATEGORY_NAME FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:ID';
           Q.ParamByName('STORE_ID').AsInteger := FStoreID; Q.ParamByName('ID').AsInteger := ID;
           Q.Open; NameValue := Q.Fields[0].AsString; Q.Close;
-          if not InputQuery('음식종류수정', '음식종류이름', NameValue) then Exit;
+          if not InputQuery('음식 종류 수정', '음식 종류 이름', NameValue) then Exit;
           Q.SQL.Text := 'UPDATE MENU_CATEGORY SET CATEGORY_NAME=:NAME WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
         end;
@@ -344,18 +344,18 @@ begin
           PriceValue := CurrToStr(Q.Fields[2].AsCurrency);
           DescriptionValue := Q.Fields[3].AsString;
           Q.Close;
-          if not InputQuery('메뉴수정', '메뉴이름', NameValue) then Exit;
-          if not InputQuery('메뉴수정', '음식종류번호', CategoryValue) then Exit;
-          if not TryStrToInt(Trim(CategoryValue), CategoryID) then raise Exception.Create('음식종류번호가올바르지않습니다''.');
+          if not InputQuery('메뉴 수정', '메뉴 이름', NameValue) then Exit;
+          if not InputQuery('메뉴 수정', '음식 종류 번호', CategoryValue) then Exit;
+          if not TryStrToInt(Trim(CategoryValue), CategoryID) then raise Exception.Create('음식 종류 번호가 올바르지 않습니다.');
           Q.SQL.Text := 'SELECT COUNT(*) FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:CAT_ID AND ACTIVE_YN=''Y''';
           Q.ParamByName('STORE_ID').AsInteger := FStoreID;
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
           Q.Open;
-          if Q.Fields[0].AsInteger = 0 then raise Exception.Create('사용중인음식종류를찾을수없습니다''.');
+          if Q.Fields[0].AsInteger = 0 then raise Exception.Create('사용 중인 음식 종류를 찾을 수 없습니다.');
           Q.Close;
-          if not InputQuery('메뉴수정', '판매가격', PriceValue) then Exit;
-          if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then raise Exception.Create('판매가격이올바르지않습니다''.');
-          if not InputQuery('메뉴수정', '메뉴설명', DescriptionValue) then Exit;
+          if not InputQuery('메뉴 수정', '판매 가격', PriceValue) then Exit;
+          if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then raise Exception.Create('판매 가격이 올바르지 않습니다.');
+          if not InputQuery('메뉴 수정', '메뉴 설명', DescriptionValue) then Exit;
           Q.SQL.Text := 'UPDATE MENU_ITEM SET MENU_NAME=:NAME, CATEGORY_ID=:CAT_ID, PRICE=:PRICE, DESCRIPTION=:DESCRIPTION WHERE STORE_ID=:STORE_ID AND MENU_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
@@ -392,9 +392,9 @@ begin
     CurrentStatus := Q.Fields[0].AsString;
     Q.Close;
     if SameText(CurrentStatus, 'Y') then
-    begin NewStatus := 'N'; MessageText := '선택항목을사용중지하시겠습니까''?'; end
+    begin NewStatus := 'N'; MessageText := '선택 항목을 사용 중지하시겠습니까?'; end
     else
-    begin NewStatus := 'Y'; MessageText := '선택항목을다시사용하시겠습니까''?'; end;
+    begin NewStatus := 'Y'; MessageText := '선택 항목을 다시 사용하시겠습니까?'; end;
     if MessageDlg(MessageText, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
     case AIndex of
       0: Q.SQL.Text := 'UPDATE POS_TABLE SET ACTIVE_YN=:STATUS WHERE STORE_ID=:STORE_ID AND TABLE_ID=:ID';
