@@ -10,7 +10,7 @@ object frmLogin: TfrmLogin
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -15
-  Font.Name = #$B9D1#$C740 #$ACE0#$B515
+  Font.Name = #$B9D1#$C740' '#$ACE0#$B515
   Position = poScreenCenter
   OnCreate = FormCreate
   object pnlLogin: TPanel
@@ -26,7 +26,7 @@ object frmLogin: TfrmLogin
       Width = 470
       Height = 42
       Alignment = taCenter
-      Caption = 'InterPOS - '#$B9E4#$C7A5 #$B85C#$ADF8#$C778
+      Caption = 'InterPOS - '#$B9E4#$C7A5' '#$B85C#$ADF8#$C778
       Font.Height = -24
       Font.Style = [fsBold]
       ParentFont = False
@@ -84,7 +84,7 @@ object frmLogin: TfrmLogin
       Width = 550
       Height = 38
       Alignment = taCenter
-      Caption = #$CD5C#$CD08 #$B9E4#$C7A5 #$BC0F #$C810#$C8FC #$ACC4#$C815 #$B4F1#$B85D
+      Caption = #$CD5C#$CD08' '#$B9E4#$C7A5' '#$BC0F #$C810#$C8FC' '#$ACC4#$C815' '#$B4F1#$B85D
       Font.Height = -21
       Font.Style = [fsBold]
       ParentFont = False
@@ -94,7 +94,7 @@ object frmLogin: TfrmLogin
       Top = 86
       Width = 120
       Height = 24
-      Caption = #$B9E4#$C7A5 #$C774#$B984
+      Caption = #$B9E4#$C7A5' '#$C774#$B984
     end
     object edtStoreName: TEdit
       Left = 220
@@ -108,7 +108,7 @@ object frmLogin: TfrmLogin
       Top = 132
       Width = 120
       Height = 24
-      Caption = #$C810#$C8FC #$C774#$B984
+      Caption = #$C810#$C8FC' '#$C774#$B984
     end
     object edtOwnerName: TEdit
       Left = 220
@@ -122,7 +122,7 @@ object frmLogin: TfrmLogin
       Top = 178
       Width = 120
       Height = 24
-      Caption = #$B85C#$ADF8#$C778 #$C544#$C774#$B514
+      Caption = #$B85C#$ADF8#$C778' '#$C544#$C774#$B514
     end
     object edtSetupLoginID: TEdit
       Left = 220
@@ -151,7 +151,7 @@ object frmLogin: TfrmLogin
       Top = 270
       Width = 120
       Height = 24
-      Caption = #$BE44#$BC00#$BC88#$D638 #$D655#$C778
+      Caption = #$BE44#$BC00#$BC88#$D638' '#$D655#$C778
     end
     object edtConfirmPassword: TEdit
       Left = 220
@@ -166,7 +166,7 @@ object frmLogin: TfrmLogin
       Top = 318
       Width = 320
       Height = 48
-      Caption = #$C810#$C8FC #$ACC4#$C815 #$C0DD#$C131
+      Caption = #$C810#$C8FC' '#$ACC4#$C815' '#$C0DD#$C131
       TabOrder = 5
       OnClick = btnCreateOwnerClick
     end
