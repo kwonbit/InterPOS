@@ -110,7 +110,7 @@
       Top = 160
       Width = 220
       Height = 48
-      Caption = '주방 주문현황'
+      Caption = 'Kitchen Orders'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 5
