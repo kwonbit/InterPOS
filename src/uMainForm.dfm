@@ -1,7 +1,7 @@
-object frmMain: TfrmMain
+﻿object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'InterPOS'
+  Caption = 'InterPOS - 음식점 POS'
   ClientHeight = 640
   ClientWidth = 1024
   Color = clBtnFace
@@ -25,7 +25,7 @@ object frmMain: TfrmMain
       Top = 20
       Width = 300
       Height = 24
-      Caption = 'InterPOS'
+      Caption = 'InterPOS | 음식점 POS'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -21
@@ -46,7 +46,7 @@ object frmMain: TfrmMain
       Top = 560
       Width = 240
       Height = 16
-      Caption = 'Database status'
+      Caption = '데이터베이스 미연결'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
     end
@@ -55,7 +55,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = 'POS Sales'
+      Caption = 'POS 판매'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 0
@@ -66,7 +66,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = 'Table Management'
+      Caption = '테이블 관리'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 1
@@ -76,7 +76,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = 'Menu Management'
+      Caption = '메뉴 관리'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 2
@@ -86,7 +86,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = 'Employee Management'
+      Caption = '직원 관리'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 3
@@ -97,7 +97,7 @@ object frmMain: TfrmMain
       Top = 160
       Width = 140
       Height = 48
-      Caption = 'Logout'
+      Caption = '로그아웃'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 4
