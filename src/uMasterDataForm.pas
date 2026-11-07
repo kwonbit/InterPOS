@@ -5,7 +5,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, Data.DB,
   FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
-  Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.DBGrids;
+  Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.DBGrids, Vcl.Dialogs;
 
 type
   TfrmMasterData = class(TForm)
@@ -33,6 +33,8 @@ implementation
 
 uses
   uDatabase;
+
+{$R *.dfm}
 
 procedure TfrmMasterData.FormCreate(Sender: TObject);
 begin
