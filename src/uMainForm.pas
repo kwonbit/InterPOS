@@ -1,4 +1,5 @@
-unit uMainForm;
+﻿unit uMainForm;
+{$CODEPAGE UTF8}
 
 interface
 
