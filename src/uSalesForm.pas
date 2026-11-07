@@ -865,6 +865,8 @@ begin
       RemainingAmount := OrderTotal - PaidAmount;
       if RemainingAmount <= 0 then
         raise Exception.Create('이미 결제가 완료된 주문입니다.');
+      if (MethodCode = 'CASH') and (ReceivedAmount < RemainingAmount) then
+        raise Exception.Create('주문 금액이 변경되었습니다. 받은 현금이 결제 금액보다 적습니다. 다시 결제해 주세요.');
 
       PaymentID := NextSequenceValue('GEN_POS_PAYMENT_ID');
       Q.SQL.Text := 'INSERT INTO POS_PAYMENT ' +
