@@ -84,7 +84,7 @@ object frmLogin: TfrmLogin
       Width = 550
       Height = 38
       Alignment = taCenter
-      Caption = #$CD5C#$CD08' '#$B9E4#$C7A5' '#$BC0F #$C810#$C8FC' '#$ACC4#$C815' '#$B4F1#$B85D
+      Caption = #$CD5C#$CD08' '#$B9E4#$C7A5' '#$BC0F' '#$C810#$C8FC' '#$ACC4#$C815' '#$B4F1#$B85D
       Font.Height = -21
       Font.Style = [fsBold]
       ParentFont = False
