@@ -1,0 +1,10 @@
+[Database]
+Protocol=TCPIP
+Database=localhost:C:\InterPOS\data\INTERPOS.FDB
+UserName=SYSDBA
+Password=CHANGE_ME
+CharacterSet=UTF8
+
+[POS]
+TerminalId=1
+StoreId=1
