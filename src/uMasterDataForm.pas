@@ -40,17 +40,17 @@ uses
 
 procedure TfrmMasterData.FormCreate(Sender: TObject);
 begin
-  Caption := '기초정보관리';
-  Font.Name := '맑은고딕';
+  Caption := '기초정보 관리';
+  Font.Name := '맑은 고딕';
   Width := 980;
   Height := 620;
   Position := poScreenCenter;
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
-  BuildPage(0, '테이블관리');
-  BuildPage(1, '음식종류');
-  BuildPage(2, '음식메뉴');
+  BuildPage(0, '테이블 관리');
+  BuildPage(1, '음식 종류');
+  BuildPage(2, '음식 메뉴');
 end;
 
 procedure TfrmMasterData.SetStoreID(AStoreID: Integer);
@@ -172,18 +172,18 @@ begin
     0:
       FQueries[AIndex].SQL.Text :=
         'SELECT TABLE_ID, TABLE_NAME, TABLE_GROUP, DISPLAY_ORDER, ' +
-        'CASE WHEN ACTIVE_YN=''''Y'''' THEN ''''''사용'''''' ELSE ''''''중지'''''' END AS STATUS ' +
+        'CASE WHEN ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
         'FROM POS_TABLE WHERE STORE_ID=:STORE_ID ORDER BY DISPLAY_ORDER, TABLE_ID';
     1:
       FQueries[AIndex].SQL.Text :=
         'SELECT CATEGORY_ID, CATEGORY_NAME, DISPLAY_ORDER, ' +
-        'CASE WHEN ACTIVE_YN=''''Y'''' THEN ''''''사용'''''' ELSE ''''''중지'''''' END AS STATUS ' +
+        'CASE WHEN ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
         'FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID ORDER BY DISPLAY_ORDER, CATEGORY_ID';
     2:
       FQueries[AIndex].SQL.Text :=
         'SELECT M.MENU_ID, M.MENU_NAME, M.CATEGORY_ID, C.CATEGORY_NAME, ' +
         'M.PRICE, M.DISPLAY_ORDER, ' +
-        'CASE WHEN M.ACTIVE_YN=''''Y'''' THEN ''''''사용'''''' ELSE ''''''중지'''''' END AS STATUS ' +
+        'CASE WHEN M.ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
         'FROM MENU_ITEM M JOIN MENU_CATEGORY C ON C.CATEGORY_ID=M.CATEGORY_ID ' +
         'WHERE M.STORE_ID=:STORE_ID ORDER BY C.DISPLAY_ORDER, M.DISPLAY_ORDER, M.MENU_ID';
   end;
@@ -201,7 +201,7 @@ begin
   else if AIndex = 1 then
   begin
     with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_ID'; Title.Caption := '종류번호'; Width := 100; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식종류'; Width := 220; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식 종류'; Width := 220; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 90; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
   end
@@ -209,7 +209,7 @@ begin
   begin
     with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_ID'; Title.Caption := '메뉴번호'; Width := 90; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_NAME'; Title.Caption := '메뉴명'; Width := 180; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식종류'; Width := 150; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식 종류'; Width := 150; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'PRICE'; Title.Caption := '판매가격'; Width := 110; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 80; end;
     with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
