@@ -81,6 +81,17 @@ object frmMain: TfrmMain
       Font.Name = 'Arial'
       TabOrder = 2
     end
+    object btnEmployee: TButton
+      Left = 752
+      Top = 32
+      Width = 220
+      Height = 100
+      Caption = 'Employee Management'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Name = 'Arial'
+      TabOrder = 3
+      OnClick = btnEmployeeClick
+    end
     object btnClose: TButton
       Left = 32
       Top = 160
@@ -89,7 +100,7 @@ object frmMain: TfrmMain
       Caption = 'Logout'
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
-      TabOrder = 3
+      TabOrder = 4
       OnClick = btnCloseClick
     end
   end
