@@ -1,7 +1,7 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'InterPOS - #$C74C#$C2DD#$C810 POS'
+  Caption = 'InterPOS - '#$C74C#$C2DD#$C810' POS'
   ClientHeight = 640
   ClientWidth = 1024
   Color = clBtnFace
@@ -21,7 +21,7 @@ object frmMain: TfrmMain
       Top = 20
       Width = 240
       Height = 28
-      Caption = 'InterPOS | #$C74C#$C2DD#$C810 POS'
+      Caption = 'InterPOS | '#$C74C#$C2DD#$C810' POS'
       Font.Height = -21
       Font.Style = [fsBold]
       ParentFont = False
@@ -35,7 +35,7 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = 'POS #$D310#$B9E4'
+      Caption = 'POS '#$D310#$B9E4
       TabOrder = 0
       OnClick = btnSalesClick
     end
