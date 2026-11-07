@@ -47,6 +47,8 @@ type
     procedure RemoveSelected;
     procedure SaveOrder;
     procedure PaymentClick(Sender: TObject);
+    procedure ConfigurePrinterClick(Sender: TObject);
+    procedure ReprintReceiptClick(Sender: TObject);
     procedure ProcessPayment;
     procedure QuantityPlusClick(Sender: TObject);
     procedure QuantityMinusClick(Sender: TObject);
@@ -68,7 +70,7 @@ type
 implementation
 
 uses
-  uDatabase;
+  uDatabase, uReceiptPrinter;
 
 {$R *.dfm}
 
@@ -76,7 +78,7 @@ procedure TfrmSales.FormCreate(Sender: TObject);
 var
   Header, CartPanel, ButtonPanel: TPanel;
   Lbl: TLabel;
-  Btn: TButton;
+  Btn, PrinterBtn, ReprintBtn: TButton;
 begin
   Caption := 'POS 판매';
   Font.Name := '맑은 고딕';
@@ -200,6 +202,24 @@ begin
   Btn.Caption := '주문 저장';
   Btn.Font.Style := [fsBold];
   Btn.OnClick := SaveClick;
+
+  PrinterBtn := TButton.Create(Self);
+  PrinterBtn.Parent := ButtonPanel;
+  PrinterBtn.Left := 690;
+  PrinterBtn.Top := 7;
+  PrinterBtn.Width := 95;
+  PrinterBtn.Height := 38;
+  PrinterBtn.Caption := '프린터 설정';
+  PrinterBtn.OnClick := ConfigurePrinterClick;
+
+  ReprintBtn := TButton.Create(Self);
+  ReprintBtn.Parent := ButtonPanel;
+  ReprintBtn.Left := 790;
+  ReprintBtn.Top := 7;
+  ReprintBtn.Width := 100;
+  ReprintBtn.Height := 38;
+  ReprintBtn.Caption := '영수증 재출력';
+  ReprintBtn.OnClick := ReprintReceiptClick;
 
   FPaymentButton := TButton.Create(Self);
   FPaymentButton.Parent := ButtonPanel;
@@ -708,6 +728,64 @@ begin
   end;
 end;
 
+procedure TfrmSales.ConfigurePrinterClick(Sender: TObject);
+var
+  Settings: TReceiptPrinterSettings;
+  PortText, BaudText: string;
+begin
+  try
+  Settings := TReceiptPrinter.LoadSettings;
+  PortText := Settings.PortName;
+  BaudText := IntToStr(Settings.BaudRate);
+  if not InputQuery('영수증 프린터 설정', '시리얼 포트 (예: COM1)', PortText) then Exit;
+  if not InputQuery('영수증 프린터 설정', '통신 속도 (2400~115200)', BaudText) then Exit;
+  Settings.PortName := UpperCase(Trim(PortText));
+  if not TryStrToInt(Trim(BaudText), Settings.BaudRate) then
+    raise Exception.Create('통신 속도는 숫자로 입력해 주세요.');
+  TReceiptPrinter.SaveSettings(Settings);
+  if MessageDlg('프린터 설정이 저장되었습니다.' + sLineBreak +
+    '테스트 인쇄를 실행하시겠습니까?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    TReceiptPrinter.TestPrint(Settings);
+  MessageDlg('프린터 설정이 저장되었습니다.', mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+      MessageDlg('프린터 설정/테스트 인쇄에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmSales.ReprintReceiptClick(Sender: TObject);
+var
+  Q: TFDQuery;
+  OrderID: Int64;
+begin
+  try
+  if SelectedTableID = 0 then
+    raise Exception.Create('먼저 테이블을 선택해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID FROM POS_ORDER ' +
+      'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID AND ORDER_STATUS=''PAID'' ' +
+      'ORDER BY ORDERED_AT DESC';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('선택한 테이블에 재출력할 결제 완료 주문이 없습니다.');
+    OrderID := Q.FieldByName('ORDER_ID').AsLargeInt;
+  finally
+    Q.Free;
+  end;
+  TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderID);
+  MessageDlg('영수증을 다시 출력했습니다.', mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+      MessageDlg('영수증 재출력에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
+end;
+
 procedure TfrmSales.ProcessPayment;
 var
   OrderID: Int64;
@@ -893,6 +971,14 @@ begin
   end;
 
   UpdateTableStatus;
+  try
+    TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderID);
+  except
+    on E: Exception do
+      MessageDlg('결제는 완료되었지만 영수증 출력에 실패했습니다.' + sLineBreak +
+        E.Message + sLineBreak + '영수증 재출력 버튼으로 다시 시도해 주세요.',
+        mtWarning, [mbOK], 0);
+  end;
   MessageDlg('결제가 완료되었습니다.' + sLineBreak +
     '주문번호: ' + OrderNo + sLineBreak +
     '결제수단: ' + IfThen(MethodCode = 'CASH', '현금', '카드') + sLineBreak +
