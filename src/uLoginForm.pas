@@ -66,7 +66,6 @@ procedure TfrmLogin.ShowLogin;
 begin
   pnlSetup.Visible := False;
   pnlLogin.Visible := True;
-  ActiveControl := edtLoginID;
 end;
 
 procedure TfrmLogin.ShowFirstRunSetup;
@@ -74,7 +73,6 @@ begin
   pnlLogin.Visible := False;
   pnlSetup.Visible := True;
   lblMessage.Caption := '최초 실행입니다. 점주 계정을 먼저 등록해 주세요.';
-  ActiveControl := edtStoreName;
 end;
 
 procedure TfrmLogin.btnLoginClick(Sender: TObject);
