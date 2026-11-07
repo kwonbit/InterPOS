@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
-  Vcl.ExtCtrls;
+  Vcl.ExtCtrls, uAuth;
 
 type
   TfrmMain = class(TForm)
@@ -21,8 +21,10 @@ type
     procedure btnCloseClick(Sender: TObject);
     procedure btnSalesClick(Sender: TObject);
   private
+    FSession: TEmployeeSession;
     procedure UpdateDatabaseStatus;
   public
+    procedure SetSession(const ASession: TEmployeeSession);
   end;
 
 var
@@ -34,6 +36,14 @@ uses
   uDatabase;
 
 {$R *.dfm}
+
+procedure TfrmMain.SetSession(const ASession: TEmployeeSession);
+begin
+  FSession := ASession;
+  if FSession.EmployeeID > 0 then
+    Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
+      RoleDisplayName(FSession.RoleCode) + ')';
+end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
