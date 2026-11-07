@@ -52,22 +52,34 @@ var
   IniPath: string;
 begin
   FStoreID := 1;
+  FConnection.Params.Clear;
+  FConnection.Params.DriverID := 'FB';
+  FConnection.Params.Database := 'C:\InterPOS\data\INTERPOS.FDB';
+  FConnection.Params.UserName := 'SYSDBA';
+  FConnection.Params.Password := 'masterkey';
+  FConnection.Params.Values['CharacterSet'] := 'UTF8';
+  FConnection.Params.Values['Protocol'] := 'TCPIP';
+  FConnection.Params.Values['Server'] := '127.0.0.1';
+  FConnection.Params.Values['Port'] := '3050';
+
   IniPath := ChangeFileExt(ParamStr(0), '.ini');
   if not FileExists(IniPath) then
     Exit;
 
   Ini := TIniFile.Create(IniPath);
   try
-    FConnection.Params.Clear;
-    FConnection.Params.DriverID := 'FB';
     FConnection.Params.Database := Ini.ReadString('Database', 'Database',
-      'localhost:C:\InterPOS\data\INTERPOS.FDB');
+      'C:\InterPOS\data\INTERPOS.FDB');
     FConnection.Params.UserName := Ini.ReadString('Database', 'UserName', 'SYSDBA');
     FConnection.Params.Password := Ini.ReadString('Database', 'Password', 'masterkey');
     FConnection.Params.Values['CharacterSet'] :=
       Ini.ReadString('Database', 'CharacterSet', 'UTF8');
     FConnection.Params.Values['Protocol'] :=
       Ini.ReadString('Database', 'Protocol', 'TCPIP');
+    FConnection.Params.Values['Server'] :=
+      Ini.ReadString('Database', 'Server', '127.0.0.1');
+    FConnection.Params.Values['Port'] :=
+      Ini.ReadString('Database', 'Port', '3050');
     FStoreID := Ini.ReadInteger('POS', 'StoreId', 1);
   finally
     Ini.Free;
