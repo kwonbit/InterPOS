@@ -2,6 +2,7 @@
 uses
   System.SysUtils,
   System.UITypes,
+  FireDAC.DApt,
   Vcl.Forms,
   Vcl.Dialogs,
   uMainForm in 'uMainForm.pas' {frmMain},
