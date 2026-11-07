@@ -17,9 +17,13 @@ type
     btnMenu: TButton;
     btnEmployee: TButton;
     btnClose: TButton;
+    btnKitchen: TButton;
+    btnReports: TButton;
     lblStatus: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
+    procedure btnKitchenClick(Sender: TObject);
+    procedure btnReportsClick(Sender: TObject);
     procedure btnSalesClick(Sender: TObject);
     procedure btnTableClick(Sender: TObject);
     procedure btnMenuClick(Sender: TObject);
@@ -37,7 +41,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm;
 
 {$R *.dfm}
 
@@ -48,6 +52,7 @@ begin
     SameText(FSession.RoleCode, 'MANAGER');
   btnTable.Visible := btnEmployee.Visible;
   btnMenu.Visible := btnEmployee.Visible;
+  btnReports.Visible := btnEmployee.Visible;
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -70,6 +75,10 @@ begin
   btnEmployee.Caption := '직원 관리';
   btnClose.Font.Name := Font.Name;
   btnClose.Caption := '로그아웃';
+  btnKitchen.Font.Name := Font.Name;
+  btnKitchen.Caption := '주방 주문현황';
+  btnReports.Font.Name := Font.Name;
+  btnReports.Caption := '매출관리 / 영업마감';
   UpdateDatabaseStatus;
 end;
 
@@ -96,6 +105,45 @@ begin
     SalesForm.ShowModal;
   finally
     SalesForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnKitchenClick(Sender: TObject);
+var
+  KitchenForm: TfrmKitchenDisplay;
+begin
+  KitchenForm := TfrmKitchenDisplay.CreateKitchen(Self, dmDatabase.StoreID);
+  try
+    KitchenForm.ShowModal;
+  finally
+    KitchenForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnReportsClick(Sender: TObject);
+var
+  ReportForm: TfrmSalesReport;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('매출관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  ReportForm := TfrmSalesReport.Create(Self);
+  try
+    try
+      ReportForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      ReportForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('매출관리 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/07_sales_closing.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    ReportForm.Free;
   end;
 end;
 

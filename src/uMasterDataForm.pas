@@ -4,7 +4,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.UITypes, Data.DB,
-  FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
+  FireDAC.Comp.Client, FireDAC.Stan.Param, Vcl.Forms, Vcl.Controls, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.ComCtrls, Vcl.DBGrids, Vcl.Dialogs;
 
 type
@@ -37,6 +37,488 @@ uses
   uDatabase;
 
 {$R *.dfm}
+
+
+type
+  TMenuOptionManager = class(TForm)
+  private
+    FStoreID: Integer;
+    FGroups: TComboBox;
+    FMenus: TComboBox;
+    FOptions: TListBox;
+    procedure LoadGroups;
+    procedure LoadMenus;
+    procedure LoadOptions;
+    procedure GroupChange(Sender: TObject);
+    procedure AddGroupClick(Sender: TObject);
+    procedure EditGroupClick(Sender: TObject);
+    procedure DeleteGroupClick(Sender: TObject);
+    procedure AddOptionClick(Sender: TObject);
+    procedure EditOptionClick(Sender: TObject);
+    procedure DeleteOptionClick(Sender: TObject);
+    procedure LinkClick(Sender: TObject);
+    procedure UnlinkClick(Sender: TObject);
+    function SelectedGroupID: Integer;
+    function SelectedMenuID: Integer;
+  public
+    constructor CreateManager(AOwner: TComponent; AStoreID: Integer);
+  end;
+
+constructor TMenuOptionManager.CreateManager(AOwner: TComponent; AStoreID: Integer);
+var
+  L: TLabel;
+  P: TPanel;
+  B: TButton;
+begin
+  inherited CreateNew(AOwner);
+  FStoreID := AStoreID;
+  Caption := '메뉴 옵션 관리';
+  Font.Name := '맑은 고딕';
+  Position := poScreenCenter;
+  BorderStyle := bsDialog;
+  Width := 680;
+  Height := 540;
+
+  L := TLabel.Create(Self);
+  L.Parent := Self; L.Left := 20; L.Top := 20;
+  L.Caption := '옵션 그룹';
+
+  FGroups := TComboBox.Create(Self);
+  FGroups.Parent := Self; FGroups.Left := 20; FGroups.Top := 44;
+  FGroups.Width := 300; FGroups.Style := csDropDownList;
+  FGroups.OnChange := GroupChange;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 330; B.Top := 42;
+  B.Width := 110; B.Height := 30; B.Caption := '옵션 그룹 등록';
+  B.OnClick := AddGroupClick;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 445; B.Top := 42;
+  B.Width := 85; B.Height := 30; B.Caption := '그룹 수정';
+  B.OnClick := EditGroupClick;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 540; B.Top := 42;
+  B.Width := 85; B.Height := 30; B.Caption := '그룹 삭제';
+  B.OnClick := DeleteGroupClick;
+
+  L := TLabel.Create(Self);
+  L.Parent := Self; L.Left := 20; L.Top := 92;
+  L.Caption := '선택 그룹의 옵션 목록';
+
+  FOptions := TListBox.Create(Self);
+  FOptions.Parent := Self; FOptions.Left := 20; FOptions.Top := 116;
+  FOptions.Width := 610; FOptions.Height := 230;
+  FOptions.ItemHeight := 24;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 20; B.Top := 358;
+  B.Width := 135; B.Height := 36; B.Caption := '옵션 등록';
+  B.OnClick := AddOptionClick;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 165; B.Top := 358;
+  B.Width := 115; B.Height := 36; B.Caption := '옵션 수정';
+  B.OnClick := EditOptionClick;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 290; B.Top := 358;
+  B.Width := 115; B.Height := 36; B.Caption := '옵션 삭제';
+  B.OnClick := DeleteOptionClick;
+
+  L := TLabel.Create(Self);
+  L.Parent := Self; L.Left := 20; L.Top := 410;
+  L.Caption := '옵션을 연결할 메뉴';
+
+  FMenus := TComboBox.Create(Self);
+  FMenus.Parent := Self; FMenus.Left := 20; FMenus.Top := 434;
+  FMenus.Width := 300; FMenus.Style := csDropDownList;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 330; B.Top := 432;
+  B.Width := 145; B.Height := 32; B.Caption := '선택 메뉴에 연결';
+  B.OnClick := LinkClick;
+
+  B := TButton.Create(Self);
+  B.Parent := Self; B.Left := 485; B.Top := 432;
+  B.Width := 145; B.Height := 32; B.Caption := '메뉴 연결 해제';
+  B.OnClick := UnlinkClick;
+
+  P := TPanel.Create(Self);
+  P.Parent := Self; P.Align := alBottom; P.Height := 38;
+  P.BevelOuter := bvNone;
+  L := TLabel.Create(Self);
+  L.Parent := P; L.Align := alClient;
+  L.Caption := '그룹 등록 → 옵션 등록 → 메뉴 선택 후 그룹 연결';
+  L.Layout := tlCenter;
+
+  LoadGroups;
+  LoadMenus;
+end;
+
+function TMenuOptionManager.SelectedGroupID: Integer;
+begin
+  Result := 0;
+  if FGroups.ItemIndex >= 0 then
+    Result := NativeInt(FGroups.Items.Objects[FGroups.ItemIndex]);
+end;
+
+function TMenuOptionManager.SelectedMenuID: Integer;
+begin
+  Result := 0;
+  if FMenus.ItemIndex >= 0 then
+    Result := NativeInt(FMenus.Items.Objects[FMenus.ItemIndex]);
+end;
+
+procedure TMenuOptionManager.LoadGroups;
+var
+  Q: TFDQuery;
+begin
+  FGroups.Items.Clear;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT OPTION_GROUP_ID, GROUP_NAME FROM MENU_OPTION_GROUP ' +
+      'WHERE STORE_ID=:STORE_ID AND ACTIVE_YN=''Y'' ORDER BY DISPLAY_ORDER, OPTION_GROUP_ID';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.Open;
+    while not Q.Eof do
+    begin
+      FGroups.Items.AddObject(Q.FieldByName('GROUP_NAME').AsString,
+        TObject(Pointer(NativeInt(Q.FieldByName('OPTION_GROUP_ID').AsInteger))));
+      Q.Next;
+    end;
+  finally Q.Free; end;
+  if FGroups.Items.Count > 0 then FGroups.ItemIndex := 0;
+  LoadOptions;
+end;
+
+procedure TMenuOptionManager.LoadMenus;
+var
+  Q: TFDQuery;
+begin
+  FMenus.Items.Clear;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT MENU_ID, MENU_NAME FROM MENU_ITEM ' +
+      'WHERE STORE_ID=:STORE_ID AND ACTIVE_YN=''Y'' ORDER BY MENU_NAME, MENU_ID';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.Open;
+    while not Q.Eof do
+    begin
+      FMenus.Items.AddObject(Q.FieldByName('MENU_NAME').AsString,
+        TObject(Pointer(NativeInt(Q.FieldByName('MENU_ID').AsInteger))));
+      Q.Next;
+    end;
+  finally Q.Free; end;
+  if FMenus.Items.Count > 0 then FMenus.ItemIndex := 0;
+end;
+
+procedure TMenuOptionManager.LoadOptions;
+var
+  Q: TFDQuery;
+  S: string;
+begin
+  FOptions.Items.Clear;
+  if SelectedGroupID = 0 then Exit;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT OPTION_ID, OPTION_NAME, ADD_PRICE FROM MENU_OPTION ' +
+      'WHERE OPTION_GROUP_ID=:GROUP_ID AND ACTIVE_YN=''Y'' ORDER BY DISPLAY_ORDER, OPTION_ID';
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.Open;
+    while not Q.Eof do
+    begin
+      S := Q.FieldByName('OPTION_NAME').AsString + '  (+' +
+        FormatCurr('#,##0', Q.FieldByName('ADD_PRICE').AsCurrency) + '원)';
+      FOptions.Items.AddObject(S,
+        TObject(Pointer(NativeInt(Q.FieldByName('OPTION_ID').AsInteger))));
+      Q.Next;
+    end;
+  finally Q.Free; end;
+end;
+
+procedure TMenuOptionManager.GroupChange(Sender: TObject);
+begin
+  LoadOptions;
+end;
+
+procedure TMenuOptionManager.AddGroupClick(Sender: TObject);
+var
+  NameValue, RequiredValue, MaxValue, RequiredYN: string;
+  MaxSelect, NewID: Integer;
+  Q: TFDQuery;
+begin
+  NameValue := '';
+  if not InputQuery('옵션 그룹 등록', '그룹 이름 (예: 맵기 선택)', NameValue) then Exit;
+  if Trim(NameValue) = '' then Exit;
+  RequiredValue := 'N';
+  if not InputQuery('옵션 그룹 등록', '필수 선택 여부 (Y/N)', RequiredValue) then Exit;
+  RequiredYN := UpperCase(Trim(RequiredValue));
+  if (RequiredYN <> 'Y') and (RequiredYN <> 'N') then
+    raise Exception.Create('필수 선택 여부는 Y 또는 N으로 입력해 주세요.');
+  MaxValue := '1';
+  if not InputQuery('옵션 그룹 등록', '최대 선택 개수 (0은 제한 없음)', MaxValue) then Exit;
+  if not TryStrToInt(Trim(MaxValue), MaxSelect) or (MaxSelect < 0) then
+    raise Exception.Create('최대 선택 개수를 올바르게 입력해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT COALESCE(MAX(OPTION_GROUP_ID), 0) + 1 FROM MENU_OPTION_GROUP';
+    Q.Open; NewID := Q.Fields[0].AsInteger; Q.Close;
+    Q.SQL.Text := 'INSERT INTO MENU_OPTION_GROUP ' +
+      '(OPTION_GROUP_ID, STORE_ID, GROUP_NAME, REQUIRED_YN, MAX_SELECT, DISPLAY_ORDER, ACTIVE_YN) ' +
+      'VALUES (:ID, :STORE_ID, :NAME, :REQ, :MAX, :ORD, ''Y'')';
+    Q.ParamByName('ID').AsInteger := NewID;
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('NAME').AsString := Trim(NameValue);
+    Q.ParamByName('REQ').AsString := RequiredYN;
+    Q.ParamByName('MAX').AsInteger := MaxSelect;
+    Q.ParamByName('ORD').AsInteger := NewID;
+    Q.ExecSQL;
+  finally Q.Free; end;
+  LoadGroups;
+end;
+
+procedure TMenuOptionManager.EditGroupClick(Sender: TObject);
+var
+  Q: TFDQuery;
+  NameValue, RequiredValue, RequiredYN, MaxValue: string;
+  MaxSelect: Integer;
+begin
+  if SelectedGroupID = 0 then
+    raise Exception.Create('수정할 옵션 그룹을 선택해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT GROUP_NAME, REQUIRED_YN, MAX_SELECT FROM MENU_OPTION_GROUP ' +
+      'WHERE OPTION_GROUP_ID=:ID AND STORE_ID=:STORE_ID AND ACTIVE_YN=''Y''';
+    Q.ParamByName('ID').AsInteger := SelectedGroupID;
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.Open;
+    if Q.IsEmpty then Exit;
+    NameValue := Q.FieldByName('GROUP_NAME').AsString;
+    RequiredValue := Q.FieldByName('REQUIRED_YN').AsString;
+    MaxValue := Q.FieldByName('MAX_SELECT').AsString;
+  finally
+    Q.Free;
+  end;
+  if not InputQuery('옵션 그룹 수정', '그룹 이름', NameValue) then Exit;
+  if Trim(NameValue) = '' then
+    raise Exception.Create('그룹 이름을 입력해 주세요.');
+  if not InputQuery('옵션 그룹 수정', '필수 선택 여부 (Y/N)', RequiredValue) then Exit;
+  RequiredYN := UpperCase(Trim(RequiredValue));
+  if (RequiredYN <> 'Y') and (RequiredYN <> 'N') then
+    raise Exception.Create('필수 선택 여부는 Y 또는 N으로 입력해 주세요.');
+  if not InputQuery('옵션 그룹 수정', '최대 선택 개수 (0은 제한 없음)', MaxValue) then Exit;
+  if not TryStrToInt(Trim(MaxValue), MaxSelect) or (MaxSelect < 0) then
+    raise Exception.Create('최대 선택 개수를 올바르게 입력해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'UPDATE MENU_OPTION_GROUP SET GROUP_NAME=:NAME, REQUIRED_YN=:REQ, ' +
+      'MAX_SELECT=:MAX WHERE OPTION_GROUP_ID=:ID AND STORE_ID=:STORE_ID';
+    Q.ParamByName('NAME').AsString := Trim(NameValue);
+    Q.ParamByName('REQ').AsString := RequiredYN;
+    Q.ParamByName('MAX').AsInteger := MaxSelect;
+    Q.ParamByName('ID').AsInteger := SelectedGroupID;
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+  LoadGroups;
+end;
+
+procedure TMenuOptionManager.DeleteGroupClick(Sender: TObject);
+var
+  Q: TFDQuery;
+  GroupID: Integer;
+begin
+  GroupID := SelectedGroupID;
+  if GroupID = 0 then
+    raise Exception.Create('삭제할 옵션 그룹을 선택해 주세요.');
+  if MessageDlg('선택한 옵션 그룹을 삭제 처리하시겠습니까?' + sLineBreak +
+    'POS에서 더 이상 선택할 수 없으며, 기존 주문 내역은 유지됩니다.',
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+  dmDatabase.Connection.StartTransaction;
+  try
+    Q := TFDQuery.Create(nil);
+    try
+      Q.Connection := dmDatabase.Connection;
+      Q.SQL.Text := 'UPDATE MENU_OPTION SET ACTIVE_YN=''N'' WHERE OPTION_GROUP_ID=:ID';
+      Q.ParamByName('ID').AsInteger := GroupID;
+      Q.ExecSQL;
+      Q.SQL.Text := 'UPDATE MENU_OPTION_GROUP SET ACTIVE_YN=''N'' ' +
+        'WHERE OPTION_GROUP_ID=:ID AND STORE_ID=:STORE_ID';
+      Q.ParamByName('ID').AsInteger := GroupID;
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ExecSQL;
+    finally
+      Q.Free;
+    end;
+    dmDatabase.Connection.Commit;
+  except
+    dmDatabase.Connection.Rollback;
+    raise;
+  end;
+  LoadGroups;
+end;
+
+procedure TMenuOptionManager.AddOptionClick(Sender: TObject);
+var
+  NameValue, PriceValue: string;
+  Price: Currency;
+  NewID: Integer;
+  Q: TFDQuery;
+begin
+  if SelectedGroupID = 0 then
+    raise Exception.Create('먼저 옵션 그룹을 등록하고 선택해 주세요.');
+  NameValue := '';
+  if not InputQuery('옵션 등록', '옵션 이름 (예: 보통맛)', NameValue) then Exit;
+  if Trim(NameValue) = '' then Exit;
+  PriceValue := '0';
+  if not InputQuery('옵션 등록', '추가 금액', PriceValue) then Exit;
+  if not TryStrToCurr(Trim(PriceValue), Price) then
+    raise Exception.Create('추가 금액을 올바르게 입력해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT COALESCE(MAX(OPTION_ID), 0) + 1 FROM MENU_OPTION';
+    Q.Open; NewID := Q.Fields[0].AsInteger; Q.Close;
+    Q.SQL.Text := 'INSERT INTO MENU_OPTION ' +
+      '(OPTION_ID, OPTION_GROUP_ID, OPTION_NAME, ADD_PRICE, DISPLAY_ORDER, ACTIVE_YN) ' +
+      'VALUES (:ID, :GROUP_ID, :NAME, :PRICE, :ORD, ''Y'')';
+    Q.ParamByName('ID').AsInteger := NewID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.ParamByName('NAME').AsString := Trim(NameValue);
+    Q.ParamByName('PRICE').AsCurrency := Price;
+    Q.ParamByName('ORD').AsInteger := NewID;
+    Q.ExecSQL;
+  finally Q.Free; end;
+  LoadOptions;
+end;
+
+procedure TMenuOptionManager.EditOptionClick(Sender: TObject);
+var
+  Q: TFDQuery;
+  OptionID: Integer;
+  NameValue, PriceValue: string;
+  Price: Currency;
+begin
+  if (FOptions.ItemIndex < 0) or (SelectedGroupID = 0) then
+    raise Exception.Create('수정할 옵션을 선택해 주세요.');
+  OptionID := NativeInt(FOptions.Items.Objects[FOptions.ItemIndex]);
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT OPTION_NAME, ADD_PRICE FROM MENU_OPTION ' +
+      'WHERE OPTION_ID=:ID AND OPTION_GROUP_ID=:GROUP_ID AND ACTIVE_YN=''Y''';
+    Q.ParamByName('ID').AsInteger := OptionID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.Open;
+    if Q.IsEmpty then Exit;
+    NameValue := Q.FieldByName('OPTION_NAME').AsString;
+    PriceValue := Q.FieldByName('ADD_PRICE').AsString;
+  finally
+    Q.Free;
+  end;
+  if not InputQuery('옵션 수정', '옵션 이름', NameValue) then Exit;
+  if Trim(NameValue) = '' then
+    raise Exception.Create('옵션 이름을 입력해 주세요.');
+  if not InputQuery('옵션 수정', '추가 금액', PriceValue) then Exit;
+  if not TryStrToCurr(Trim(PriceValue), Price) then
+    raise Exception.Create('추가 금액을 올바르게 입력해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'UPDATE MENU_OPTION SET OPTION_NAME=:NAME, ADD_PRICE=:PRICE ' +
+      'WHERE OPTION_ID=:ID AND OPTION_GROUP_ID=:GROUP_ID';
+    Q.ParamByName('NAME').AsString := Trim(NameValue);
+    Q.ParamByName('PRICE').AsCurrency := Price;
+    Q.ParamByName('ID').AsInteger := OptionID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+  LoadOptions;
+end;
+
+procedure TMenuOptionManager.DeleteOptionClick(Sender: TObject);
+var
+  Q: TFDQuery;
+  OptionID: Integer;
+begin
+  if (FOptions.ItemIndex < 0) or (SelectedGroupID = 0) then
+    raise Exception.Create('삭제할 옵션을 선택해 주세요.');
+  OptionID := NativeInt(FOptions.Items.Objects[FOptions.ItemIndex]);
+  if MessageDlg('선택한 옵션을 삭제 처리하시겠습니까?' + sLineBreak +
+    '기존 주문 내역은 유지됩니다.',
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'UPDATE MENU_OPTION SET ACTIVE_YN=''N'' ' +
+      'WHERE OPTION_ID=:ID AND OPTION_GROUP_ID=:GROUP_ID';
+    Q.ParamByName('ID').AsInteger := OptionID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+  LoadOptions;
+end;
+
+procedure TMenuOptionManager.LinkClick(Sender: TObject);
+var
+  Q: TFDQuery;
+begin
+  if (SelectedGroupID = 0) or (SelectedMenuID = 0) then
+    raise Exception.Create('옵션 그룹과 메뉴를 모두 선택해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT COUNT(*) FROM MENU_ITEM_OPTION_GROUP ' +
+      'WHERE MENU_ID=:MENU_ID AND OPTION_GROUP_ID=:GROUP_ID';
+    Q.ParamByName('MENU_ID').AsInteger := SelectedMenuID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.Open;
+    if Q.Fields[0].AsInteger > 0 then
+    begin
+      MessageDlg('이미 연결된 옵션 그룹입니다.', mtInformation, [mbOK], 0);
+      Exit;
+    end;
+    Q.Close;
+    Q.SQL.Text := 'INSERT INTO MENU_ITEM_OPTION_GROUP (MENU_ID, OPTION_GROUP_ID, DISPLAY_ORDER) ' +
+      'VALUES (:MENU_ID, :GROUP_ID, 0)';
+    Q.ParamByName('MENU_ID').AsInteger := SelectedMenuID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.ExecSQL;
+  finally Q.Free; end;
+  MessageDlg('선택한 옵션 그룹을 메뉴에 연결했습니다.', mtInformation, [mbOK], 0);
+end;
+
+procedure TMenuOptionManager.UnlinkClick(Sender: TObject);
+var
+  Q: TFDQuery;
+begin
+  if (SelectedGroupID = 0) or (SelectedMenuID = 0) then
+    raise Exception.Create('옵션 그룹과 메뉴를 모두 선택해 주세요.');
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'DELETE FROM MENU_ITEM_OPTION_GROUP ' +
+      'WHERE MENU_ID=:MENU_ID AND OPTION_GROUP_ID=:GROUP_ID';
+    Q.ParamByName('MENU_ID').AsInteger := SelectedMenuID;
+    Q.ParamByName('GROUP_ID').AsInteger := SelectedGroupID;
+    Q.ExecSQL;
+  finally Q.Free; end;
+  MessageDlg('선택한 메뉴에서 옵션 그룹 연결을 해제했습니다.', mtInformation, [mbOK], 0);
+end;
 
 procedure TfrmMasterData.FormCreate(Sender: TObject);
 begin
@@ -113,6 +595,18 @@ begin
     Btn.Tag := AIndex * 10 + I;
     Btn.OnClick := ActionClick;
   end;
+  if AIndex = 2 then
+  begin
+    Btn := TButton.Create(Self);
+    Btn.Parent := Panel;
+    Btn.Left := 466;
+    Btn.Top := 10;
+    Btn.Width := 138;
+    Btn.Height := 44;
+    Btn.Caption := '메뉴 옵션 설정';
+    Btn.Tag := 23;
+    Btn.OnClick := ActionClick;
+  end;
 end;
 
 procedure TfrmMasterData.ActionClick(Sender: TObject);
@@ -127,6 +621,9 @@ begin
       0: AddRecord(PageIndex);
       1: EditRecord(PageIndex);
       2: ToggleRecord(PageIndex);
+      3: if PageIndex = 2 then
+        with TMenuOptionManager.CreateManager(Self, FStoreID) do
+        try ShowModal; finally Free; end;
     end;
   except
     on E: Exception do
