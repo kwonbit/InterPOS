@@ -42,6 +42,8 @@ uses
 procedure TfrmMain.SetSession(const ASession: TEmployeeSession);
 begin
   FSession := ASession;
+  btnEmployee.Visible := SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -62,8 +64,6 @@ begin
   btnMenu.Caption := #$BA54#$B274' '#$AD00#$B9AC;
   btnEmployee.Font.Name := Font.Name;
   btnEmployee.Caption := #$C9C1#$C6D0' '#$AD00#$B9AC;
-  btnEmployee.Visible := SameText(FSession.RoleCode, 'OWNER') or
-    SameText(FSession.RoleCode, 'MANAGER');
   btnClose.Font.Name := Font.Name;
   btnClose.Caption := #$B85C#$ADF8#$C544#$C6C3;
   UpdateDatabaseStatus;
