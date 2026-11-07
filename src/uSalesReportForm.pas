@@ -3,7 +3,7 @@ unit uSalesReportForm;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.DateUtils, Data.DB,
+  System.SysUtils, System.Classes, System.DateUtils, System.Math, Data.DB,
   FireDAC.Comp.Client, FireDAC.Stan.Param,
   Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Grids, Vcl.ComCtrls, Vcl.Dialogs;
@@ -22,10 +22,13 @@ type
     FMenuGrid: TStringGrid;
     FRefreshButton: TButton;
     FCloseButton: TButton;
+    FHistoryButton: TButton;
     FStatusLabel: TLabel;
     procedure BuildUI;
     procedure RefreshClick(Sender: TObject);
     procedure CloseDayClick(Sender: TObject);
+    procedure HistoryClick(Sender: TObject);
+    procedure ShowCloseHistory;
     procedure RefreshReport;
     procedure SetStatus(const AText: string);
     function NextSequenceValue(const ASequenceName: string): Int64;
@@ -118,6 +121,15 @@ begin
   FCloseButton.Caption := '선택일 영업마감';
   FCloseButton.OnClick := CloseDayClick;
 
+  FHistoryButton := TButton.Create(Self);
+  FHistoryButton.Parent := Header;
+  FHistoryButton.Left := 730;
+  FHistoryButton.Top := 8;
+  FHistoryButton.Width := 130;
+  FHistoryButton.Height := 34;
+  FHistoryButton.Caption := '마감내역 조회';
+  FHistoryButton.OnClick := HistoryClick;
+
   SummaryPanel := TPanel.Create(Self);
   SummaryPanel.Parent := Self;
   SummaryPanel.Align := alTop;
@@ -209,7 +221,7 @@ begin
     Q.SQL.Text := 'SELECT CLOSE_ID FROM POS_SALES_CLOSE ' +
       'WHERE STORE_ID=:STORE_ID AND BUSINESS_DATE=:BUSINESS_DATE';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-    Q.ParamByName('BUSINESS_DATE').AsDate := DateOf(ABusinessDate);
+    Q.ParamByName('BUSINESS_DATE').AsDateTime := DateOf(ABusinessDate);
     Q.Open;
     if not Q.IsEmpty then
       Result := Q.Fields[0].AsLargeInt;
@@ -311,6 +323,97 @@ begin
       ' ~ ' + FormatDateTime('yyyy-mm-dd', FEndDate.Date));
 end;
 
+procedure TfrmSalesReport.HistoryClick(Sender: TObject);
+begin
+  try
+    ShowCloseHistory;
+  except
+    on E: Exception do
+      MessageDlg('마감내역 조회에 실패했습니다: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmSalesReport.ShowCloseHistory;
+var
+  HistoryForm: TForm;
+  Grid: TStringGrid;
+  Q: TFDQuery;
+  Row: Integer;
+  StartAt, EndAt: TDateTime;
+begin
+  StartAt := DateOf(FStartDate.Date);
+  EndAt := IncDay(DateOf(FEndDate.Date), 1);
+
+  HistoryForm := TForm.Create(Self);
+  try
+    HistoryForm.Caption := '영업마감 내역';
+    HistoryForm.Font.Name := Font.Name;
+    HistoryForm.Position := poScreenCenter;
+    HistoryForm.Width := 850;
+    HistoryForm.Height := 500;
+
+    Grid := TStringGrid.Create(HistoryForm);
+    Grid.Parent := HistoryForm;
+    Grid.Align := alClient;
+    Grid.FixedRows := 1;
+    Grid.FixedCols := 0;
+    Grid.ColCount := 6;
+    Grid.RowCount := 2;
+    Grid.DefaultRowHeight := 28;
+    Grid.Options := Grid.Options + [goRowSelect, goColSizing];
+    Grid.Cells[0, 0] := '마감번호';
+    Grid.Cells[1, 0] := '영업일자';
+    Grid.Cells[2, 0] := '주문건수';
+    Grid.Cells[3, 0] := '총 매출';
+    Grid.Cells[4, 0] := '현금';
+    Grid.Cells[5, 0] := '카드';
+    Grid.ColWidths[0] := 90;
+    Grid.ColWidths[1] := 120;
+    Grid.ColWidths[2] := 90;
+    Grid.ColWidths[3] := 150;
+    Grid.ColWidths[4] := 130;
+    Grid.ColWidths[5] := 130;
+
+    Q := TFDQuery.Create(nil);
+    try
+      Q.Connection := dmDatabase.Connection;
+      Q.SQL.Text :=
+        'SELECT CLOSE_ID, BUSINESS_DATE, ORDER_COUNT, TOTAL_AMOUNT, ' +
+        'CASH_AMOUNT, CARD_AMOUNT FROM POS_SALES_CLOSE ' +
+        'WHERE STORE_ID=:STORE_ID AND BUSINESS_DATE>=:START_DATE ' +
+        'AND BUSINESS_DATE<:END_DATE ORDER BY BUSINESS_DATE DESC';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('START_DATE').AsDateTime := StartAt;
+      Q.ParamByName('END_DATE').AsDateTime := EndAt;
+      Q.Open;
+      Grid.RowCount := Max(2, Q.RecordCount + 1);
+      Row := 1;
+      while not Q.Eof do
+      begin
+        Grid.Cells[0, Row] := Q.FieldByName('CLOSE_ID').AsString;
+        Grid.Cells[1, Row] := FormatDateTime('yyyy-mm-dd',
+          Q.FieldByName('BUSINESS_DATE').AsDateTime);
+        Grid.Cells[2, Row] := Q.FieldByName('ORDER_COUNT').AsString;
+        Grid.Cells[3, Row] := FormatCurr('#,##0',
+          Q.FieldByName('TOTAL_AMOUNT').AsCurrency);
+        Grid.Cells[4, Row] := FormatCurr('#,##0',
+          Q.FieldByName('CASH_AMOUNT').AsCurrency);
+        Grid.Cells[5, Row] := FormatCurr('#,##0',
+          Q.FieldByName('CARD_AMOUNT').AsCurrency);
+        Inc(Row);
+        Q.Next;
+      end;
+      if Row = 1 then
+        Grid.Cells[0, 1] := '조회된 마감내역이 없습니다.';
+    finally
+      Q.Free;
+    end;
+    HistoryForm.ShowModal;
+  finally
+    HistoryForm.Free;
+  end;
+end;
+
 procedure TfrmSalesReport.CloseDayClick(Sender: TObject);
 var
   Q, DetailQ: TFDQuery;
@@ -369,7 +472,7 @@ begin
         'VALUES (:ID, :STORE_ID, :BUSINESS_DATE, :ORDER_COUNT, :TOTAL, :CASH, :CARD, :EMPLOYEE_ID)';
       Q.ParamByName('ID').AsLargeInt := CloseID;
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-      Q.ParamByName('BUSINESS_DATE').AsDate := BusinessDate;
+      Q.ParamByName('BUSINESS_DATE').AsDateTime := BusinessDate;
       Q.ParamByName('ORDER_COUNT').AsInteger := OrderCount;
       Q.ParamByName('TOTAL').AsCurrency := TotalAmount;
       Q.ParamByName('CASH').AsCurrency := CashAmount;
