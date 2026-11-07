@@ -21,6 +21,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
     procedure btnSalesClick(Sender: TObject);
+    procedure btnTableClick(Sender: TObject);
+    procedure btnMenuClick(Sender: TObject);
     procedure btnEmployeeClick(Sender: TObject);
   private
     FSession: TEmployeeSession;
@@ -35,7 +37,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm;
+  uDatabase, uEmployeeForm, uMasterDataForm;
 
 {$R *.dfm}
 
@@ -44,6 +46,8 @@ begin
   FSession := ASession;
   btnEmployee.Visible := SameText(FSession.RoleCode, 'OWNER') or
     SameText(FSession.RoleCode, 'MANAGER');
+  btnTable.Visible := btnEmployee.Visible;
+  btnMenu.Visible := btnEmployee.Visible;
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -51,30 +55,30 @@ end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  Font.Name := #$B9D1#$C740' '#$ACE0#$B515;
-  Caption := 'InterPOS - '#$C74C#$C2DD#$C810' POS';
+  Font.Name := '맑은 고딕';
+  Caption := 'InterPOS - 음식점 POS';
   lblTitle.Font.Name := Font.Name;
-  lblTitle.Caption := 'InterPOS | '#$C74C#$C2DD#$C810' POS';
+  lblTitle.Caption := 'InterPOS | 음식점 POS';
   lblStatus.Font.Name := Font.Name;
   btnSales.Font.Name := Font.Name;
-  btnSales.Caption := 'POS '#$D310#$B9E4;
+  btnSales.Caption := 'POS 판매';
   btnTable.Font.Name := Font.Name;
-  btnTable.Caption := #$D14C#$C774#$BE14' '#$AD00#$B9AC;
+  btnTable.Caption := '테이블 관리';
   btnMenu.Font.Name := Font.Name;
-  btnMenu.Caption := #$BA54#$B274' '#$AD00#$B9AC;
+  btnMenu.Caption := '메뉴 관리';
   btnEmployee.Font.Name := Font.Name;
-  btnEmployee.Caption := #$C9C1#$C6D0' '#$AD00#$B9AC;
+  btnEmployee.Caption := '직원 관리';
   btnClose.Font.Name := Font.Name;
-  btnClose.Caption := #$B85C#$ADF8#$C544#$C6C3;
+  btnClose.Caption := '로그아웃';
   UpdateDatabaseStatus;
 end;
 
 procedure TfrmMain.UpdateDatabaseStatus;
 begin
   if dmDatabase.IsConnected then
-    lblStatus.Caption := #$B370#$C774#$D130#$BCA0#$C774#$C2A4' '#$C5F0#$ACB0#$B428
+    lblStatus.Caption := '데이터베이스 연결됨'
   else
-    lblStatus.Caption := #$B370#$C774#$D130#$BCA0#$C774#$C2A4' '#$BBF8#$C5F0#$ACB0;
+    lblStatus.Caption := '데이터베이스 미연결';
 end;
 
 procedure TfrmMain.btnCloseClick(Sender: TObject);
@@ -84,7 +88,50 @@ end;
 
 procedure TfrmMain.btnSalesClick(Sender: TObject);
 begin
-  ShowMessage('POS '#$D310#$B9E4' '#$D654#$BA74#$C740' '#$B2E4#$C74C' '#$AC1C#$BC1C' '#$B2E8#$ACC4#$C5D0#$C11C' '#$AD6C#$D604#$D569#$B2C8#$B2E4'.');
+  ShowMessage('POS 판매 화면은 다음 개발 단계에서 구현합니다.');
+end;
+
+
+procedure TfrmMain.btnTableClick(Sender: TObject);
+var
+  MasterForm: TfrmMasterData;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('테이블 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  MasterForm := TfrmMasterData.Create(Self);
+  try
+    MasterForm.SetStoreID(dmDatabase.StoreID);
+    MasterForm.ShowPage(0);
+    MasterForm.ShowModal;
+  finally
+    MasterForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnMenuClick(Sender: TObject);
+var
+  MasterForm: TfrmMasterData;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('메뉴 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  MasterForm := TfrmMasterData.Create(Self);
+  try
+    MasterForm.SetStoreID(dmDatabase.StoreID);
+    MasterForm.ShowPage(2);
+    MasterForm.ShowModal;
+  finally
+    MasterForm.Free;
+  end;
 end;
 
 procedure TfrmMain.btnEmployeeClick(Sender: TObject);
@@ -94,7 +141,7 @@ begin
   if not (SameText(FSession.RoleCode, 'OWNER') or
     SameText(FSession.RoleCode, 'MANAGER')) then
   begin
-    MessageDlg(#$C9C1#$C6D0' '#$AD00#$B9AC' '#$AD8C#$D55C#$C774' '#$C5C6#$C2B5#$B2C8#$B2E4'.',
+    MessageDlg('직원 관리 권한이 없습니다.',
       mtWarning, [mbOK], 0);
     Exit;
   end;
