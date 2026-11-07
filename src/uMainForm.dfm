@@ -1,14 +1,14 @@
 object frmMain: TfrmMain
   Left = 0
   Top = 0
-  Caption = 'InterPOS - '#$C74C#$C2DD#$C810' 'POS
+  Caption = 'InterPOS'
   ClientHeight = 640
   ClientWidth = 1024
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -16
-  Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+  Font.Name = 'Arial'
   Font.Style = []
   Position = poScreenCenter
   OnCreate = FormCreate
@@ -25,11 +25,11 @@ object frmMain: TfrmMain
       Top = 20
       Width = 300
       Height = 24
-      Caption = 'InterPOS | '#$C74C#$C2DD#$C810' 'POS
+      Caption = 'InterPOS'
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -21
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
       Font.Style = [fsBold]
       ParentFont = False
     end
@@ -46,18 +46,18 @@ object frmMain: TfrmMain
       Top = 560
       Width = 240
       Height = 16
-      Caption = #$B370#$C774#$D130#$BCA0#$C774#$C2A4' '#$C5F0#$ACB0' '#$C0C1#$D0DC
+      Caption = 'Database status'
       Font.Charset = DEFAULT_CHARSET
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
     end
     object btnSales: TButton
       Left = 32
       Top = 32
       Width = 220
       Height = 100
-      Caption = POS' '#$D310#$B9E4
+      Caption = 'POS Sales'
       Font.Charset = DEFAULT_CHARSET
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
       TabOrder = 0
       OnClick = btnSalesClick
     end
@@ -66,9 +66,9 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = #$D14C#$C774#$BE14' '#$AD00#$B9AC
+      Caption = 'Table Management'
       Font.Charset = DEFAULT_CHARSET
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
       TabOrder = 1
     end
     object btnMenu: TButton
@@ -76,9 +76,9 @@ object frmMain: TfrmMain
       Top = 32
       Width = 220
       Height = 100
-      Caption = #$BA54#$B274' '#$AD00#$B9AC
+      Caption = 'Menu Management'
       Font.Charset = DEFAULT_CHARSET
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
       TabOrder = 2
     end
     object btnClose: TButton
@@ -86,9 +86,9 @@ object frmMain: TfrmMain
       Top = 160
       Width = 140
       Height = 48
-      Caption = #$B85C#$ADF8#$C544#$C6C3
+      Caption = 'Logout'
       Font.Charset = DEFAULT_CHARSET
-      Font.Name = #$B9D1#$C740' '#$ACE0#$B515
+      Font.Name = 'Arial'
       TabOrder = 3
       OnClick = btnCloseClick
     end
