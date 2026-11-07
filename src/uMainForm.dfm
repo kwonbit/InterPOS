@@ -70,6 +70,7 @@
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 1
+      OnClick = btnTableClick
     end
     object btnMenu: TButton
       Left = 512
@@ -80,6 +81,7 @@
       Font.Charset = DEFAULT_CHARSET
       Font.Name = 'Arial'
       TabOrder = 2
+      OnClick = btnMenuClick
     end
     object btnEmployee: TButton
       Left = 752
