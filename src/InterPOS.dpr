@@ -6,6 +6,7 @@ uses
   Vcl.Dialogs,
   uMainForm in 'uMainForm.pas' {frmMain},
   uLoginForm in 'uLoginForm.pas' {frmLogin},
+  uEmployeeForm in 'uEmployeeForm.pas' {frmEmployee},
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
