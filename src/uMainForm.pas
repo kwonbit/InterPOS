@@ -56,9 +56,9 @@ end;
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   Font.Name := '맑은 고딕';
-  Caption := 'InterPOS - '#$C74C#$C2DD#$C810' POS';
+  Caption := 'InterPOS - 음식점 POS';
   lblTitle.Font.Name := Font.Name;
-  lblTitle.Caption := 'InterPOS | '#$C74C#$C2DD#$C810' POS';
+  lblTitle.Caption := 'InterPOS | 음식점 POS';
   lblStatus.Font.Name := Font.Name;
   btnSales.Font.Name := Font.Name;
   btnSales.Caption := 'POS 판매';
