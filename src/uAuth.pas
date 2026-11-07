@@ -21,7 +21,13 @@ function AuthenticateEmployee(AConnection: TFDConnection; AStoreID: Integer;
   const ALoginID, APassword: string; out ASession: TEmployeeSession): Boolean;
 function RoleDisplayName(const ARoleCode: string): string;
 function CanManageMenus(const ARoleCode: string): Boolean;
-function CanManageEmployees(const ARoleCode: string): Boolean;\nprocedure AddEmployee(AConnection: TFDConnection; const AActor: TEmployeeSession;\n  const AEmployeeName, ALoginID, APassword, ARoleCode: string);\nprocedure UpdateEmployeePassword(AConnection: TFDConnection;\n  const AActor: TEmployeeSession; AEmployeeID: Integer; const ANewPassword: string);\nprocedure DeactivateEmployee(AConnection: TFDConnection;\n  const AActor: TEmployeeSession; AEmployeeID: Integer);
+function CanManageEmployees(const ARoleCode: string): Boolean;
+procedure AddEmployee(AConnection: TFDConnection; const AActor: TEmployeeSession;
+  const AEmployeeName, ALoginID, APassword, ARoleCode: string);
+procedure UpdateEmployeePassword(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer; const ANewPassword: string);
+procedure DeactivateEmployee(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer);
 
 implementation
 
@@ -259,6 +265,138 @@ end;
 function CanManageEmployees(const ARoleCode: string): Boolean;
 begin
   Result := SameText(ARoleCode, 'OWNER') or SameText(ARoleCode, 'MANAGER');
+end;
+
+
+procedure AddEmployee(AConnection: TFDConnection; const AActor: TEmployeeSession;
+  const AEmployeeName, ALoginID, APassword, ARoleCode: string);
+var
+  Q: TFDQuery;
+  NewID: Integer;
+  RoleToCreate: string;
+begin
+  if not CanManageEmployees(AActor.RoleCode) then
+    raise Exception.Create('직원 등록 권한이 없습니다.');
+  if (Trim(AEmployeeName) = '') or (Trim(ALoginID) = '') then
+    raise Exception.Create('직원 이름과 로그인 아이디를 입력해 주세요.');
+  if Length(APassword) < 8 then
+    raise Exception.Create('비밀번호는 8자 이상이어야 합니다.');
+
+  RoleToCreate := UpperCase(Trim(ARoleCode));
+  if not (SameText(RoleToCreate, 'STAFF') or SameText(RoleToCreate, 'MANAGER')) then
+    raise Exception.Create('등록할 수 없는 직원 권한입니다.');
+  if SameText(AActor.RoleCode, 'MANAGER') and not SameText(RoleToCreate, 'STAFF') then
+    raise Exception.Create('매니저는 일반 직원만 등록할 수 있습니다.');
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := AConnection;
+    Q.SQL.Text := 'SELECT COUNT(*) FROM EMPLOYEE WHERE STORE_ID=:STORE_ID AND LOGIN_ID=:LOGIN_ID';
+    Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+    Q.ParamByName('LOGIN_ID').AsString := Trim(ALoginID);
+    Q.Open;
+    if Q.Fields[0].AsInteger > 0 then
+      raise Exception.Create('이미 사용 중인 로그인 아이디입니다.');
+    Q.Close;
+
+    AConnection.StartTransaction;
+    try
+      Q.SQL.Text := 'SELECT COALESCE(MAX(EMPLOYEE_ID), 0) + 1 FROM EMPLOYEE';
+      Q.Open;
+      NewID := Q.Fields[0].AsInteger;
+      Q.Close;
+
+      Q.SQL.Text := 'INSERT INTO EMPLOYEE (EMPLOYEE_ID, STORE_ID, EMPLOYEE_NAME, ' +
+        'LOGIN_ID, PASSWORD_HASH, ROLE_CODE, ACTIVE_YN) VALUES ' +
+        '(:EMPLOYEE_ID, :STORE_ID, :EMPLOYEE_NAME, :LOGIN_ID, :PASSWORD_HASH, :ROLE_CODE, ''Y'')';
+      Q.ParamByName('EMPLOYEE_ID').AsInteger := NewID;
+      Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+      Q.ParamByName('EMPLOYEE_NAME').AsString := Trim(AEmployeeName);
+      Q.ParamByName('LOGIN_ID').AsString := Trim(ALoginID);
+      Q.ParamByName('PASSWORD_HASH').AsString := HashPassword(APassword);
+      Q.ParamByName('ROLE_CODE').AsString := RoleToCreate;
+      Q.ExecSQL;
+      AConnection.Commit;
+    except
+      AConnection.Rollback;
+      raise;
+    end;
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure UpdateEmployeePassword(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer; const ANewPassword: string);
+var
+  Q: TFDQuery;
+  TargetRole: string;
+begin
+  if not CanManageEmployees(AActor.RoleCode) then
+    raise Exception.Create('직원 비밀번호 변경 권한이 없습니다.');
+  if Length(ANewPassword) < 8 then
+    raise Exception.Create('비밀번호는 8자 이상이어야 합니다.');
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := AConnection;
+    Q.SQL.Text := 'SELECT ROLE_CODE FROM EMPLOYEE WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+    Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('직원 정보를 찾을 수 없습니다.');
+    TargetRole := Q.Fields[0].AsString;
+    Q.Close;
+
+    if SameText(AActor.RoleCode, 'MANAGER') and not SameText(TargetRole, 'STAFF') then
+      raise Exception.Create('매니저는 일반 직원의 비밀번호만 변경할 수 있습니다.');
+
+    Q.SQL.Text := 'UPDATE EMPLOYEE SET PASSWORD_HASH=:PASSWORD_HASH ' +
+      'WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    Q.ParamByName('PASSWORD_HASH').AsString := HashPassword(ANewPassword);
+    Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+    Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure DeactivateEmployee(AConnection: TFDConnection;
+  const AActor: TEmployeeSession; AEmployeeID: Integer);
+var
+  Q: TFDQuery;
+  TargetRole: string;
+begin
+  if not CanManageEmployees(AActor.RoleCode) then
+    raise Exception.Create('직원 사용 중지 권한이 없습니다.');
+  if AEmployeeID = AActor.EmployeeID then
+    raise Exception.Create('현재 로그인한 계정은 직접 중지할 수 없습니다.');
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := AConnection;
+    Q.SQL.Text := 'SELECT ROLE_CODE FROM EMPLOYEE WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+    Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('직원 정보를 찾을 수 없습니다.');
+    TargetRole := Q.Fields[0].AsString;
+    Q.Close;
+
+    if SameText(AActor.RoleCode, 'MANAGER') and not SameText(TargetRole, 'STAFF') then
+      raise Exception.Create('매니저는 일반 직원 계정만 중지할 수 있습니다.');
+
+    Q.SQL.Text := 'UPDATE EMPLOYEE SET ACTIVE_YN=''N'' ' +
+      'WHERE STORE_ID=:STORE_ID AND EMPLOYEE_ID=:EMPLOYEE_ID';
+    Q.ParamByName('STORE_ID').AsInteger := AActor.StoreID;
+    Q.ParamByName('EMPLOYEE_ID').AsInteger := AEmployeeID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
 end;
 
 end.
