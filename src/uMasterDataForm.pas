@@ -223,8 +223,8 @@ var
   Price: Currency;
   Q: TFDQuery;
 begin
-  NameValue := '';
-  GroupValue := '';
+  NameValue := ;
+  GroupValue := ;
   case AIndex of
     0:
       begin
@@ -263,7 +263,7 @@ begin
     2:
       begin
         if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$BA54#$B274 #$C774#$B984#$C744 #$C785#$B825#$D558#$C138#$C694.', NameValue) then Exit;
-        CategoryValue := '';
+        CategoryValue := ;
         if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$C74C#$C2DD #$C885#$B958 #$BC88#$D638#$B97C #$C785#$B825#$D558#$C138#$C694 (#$C74C#$C2DD #$C885#$B958 #$D0ED#$C5D0#$C11C #$D655#$C778).', CategoryValue) then Exit;
         if not TryStrToInt(Trim(CategoryValue), CategoryID) then
           raise Exception.Create('#$C74C#$C2DD #$C885#$B958 #$BC88#$D638#$AC00 #$C62C#$BC14#$B974#$C9C0 #$C54A#$C2B5#$B2C8#$B2E4.');
@@ -271,7 +271,7 @@ begin
         if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$D310#$B9E4 #$AC00#$ACA9#$C744 #$C785#$B825#$D558#$C138#$C694.', PriceValue) then Exit;
         if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then
           raise Exception.Create('#$D310#$B9E4 #$AC00#$ACA9#$C744 #$C62C#$BC14#$B974#$AC8C #$C785#$B825#$D574 #$C8FC#$C138#$C694.');
-        DescriptionValue := '';
+        DescriptionValue := ;
         if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$BA54#$B274 #$C124#$BA85 (#$C120#$D0DD)', DescriptionValue) then Exit;
         Q := TFDQuery.Create(nil);
         try
