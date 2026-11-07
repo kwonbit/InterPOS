@@ -10,6 +10,7 @@ uses
   uEmployeeForm in 'uEmployeeForm.pas' {frmEmployee},
   uMasterDataForm in 'uMasterDataForm.pas' {frmMasterData},
   uSalesForm in 'uSalesForm.pas' {frmSales},
+  uReceiptPrinter in 'uReceiptPrinter.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
