@@ -1,6 +1,4 @@
 ﻿program InterPOS;
-{$CODEPAGE UTF8}
-
 uses
   System.SysUtils,
   Vcl.Forms,
