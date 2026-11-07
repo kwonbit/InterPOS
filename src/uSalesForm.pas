@@ -5,7 +5,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.UITypes, System.Math, Data.DB,
   FireDAC.Comp.Client, Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
-  Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs;
+  Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs, Vcl.CheckLst;
 
 type
   TCartItem = record
@@ -13,6 +13,15 @@ type
     MenuName: string;
     UnitPrice: Currency;
     Quantity: Integer;
+    OptionText: string;
+    OptionAmount: Currency;
+  end;
+
+  TOptionGroupControls = record
+    GroupName: string;
+    Required: Boolean;
+    MaxSelect: Integer;
+    List: TCheckListBox;
   end;
 
   TfrmSales = class(TForm)
@@ -46,7 +55,9 @@ type
     function NextSequenceValue(const ASequenceName: string): Int64;
     function CartTotal: Currency;
     procedure AddCartItem(AMenuID: Integer; const AMenuName: string;
-      APrice: Currency);
+      APrice, AOptionAmount: Currency; const AOptionText: string);
+    function SelectMenuOptions(AMenuID: Integer; out AOptionText: string;
+      out AOptionAmount: Currency): Boolean;
   public
     procedure SetStoreID(AStoreID: Integer);
   end;
@@ -353,6 +364,8 @@ procedure TfrmSales.AddMenuClick(Sender: TObject);
 var
   MenuID: Integer;
   Q: TFDQuery;
+  OptionText: string;
+  OptionAmount: Currency;
 begin
   MenuID := TButton(Sender).Tag;
   Q := TFDQuery.Create(nil);
@@ -364,20 +377,186 @@ begin
     Q.ParamByName('MENU_ID').AsInteger := MenuID;
     Q.Open;
     if not Q.IsEmpty then
+    begin
+      if not SelectMenuOptions(MenuID, OptionText, OptionAmount) then Exit;
       AddCartItem(MenuID, Q.FieldByName('MENU_NAME').AsString,
-        Q.FieldByName('PRICE').AsCurrency);
+        Q.FieldByName('PRICE').AsCurrency, OptionAmount, OptionText);
+    end;
   finally
     Q.Free;
   end;
 end;
 
+function TfrmSales.SelectMenuOptions(AMenuID: Integer;
+  out AOptionText: string; out AOptionAmount: Currency): Boolean;
+var
+  DialogForm: TForm;
+  Scroll: TScrollBox;
+  GroupQuery, OptionQuery, PriceQuery: TFDQuery;
+  Groups: array of TOptionGroupControls;
+  GroupCount, I, J, SelectedCount, OptionID: Integer;
+  GroupLabel: TLabel;
+  OkButton, CancelButton: TButton;
+  OptionName: string;
+  GroupTop: Integer;
+begin
+  Result := True;
+  AOptionText := '';
+  AOptionAmount := 0;
+  GroupQuery := TFDQuery.Create(nil);
+  OptionQuery := TFDQuery.Create(nil);
+  PriceQuery := TFDQuery.Create(nil);
+  DialogForm := TForm.Create(nil);
+  try
+    GroupQuery.Connection := dmDatabase.Connection;
+    GroupQuery.SQL.Text :=
+      'SELECT G.OPTION_GROUP_ID, G.GROUP_NAME, G.REQUIRED_YN, G.MAX_SELECT ' +
+      'FROM MENU_ITEM_OPTION_GROUP MG ' +
+      'JOIN MENU_OPTION_GROUP G ON G.OPTION_GROUP_ID=MG.OPTION_GROUP_ID ' +
+      'WHERE MG.MENU_ID=:MENU_ID AND G.STORE_ID=:STORE_ID ' +
+      'AND G.ACTIVE_YN=''Y'' ORDER BY MG.DISPLAY_ORDER, G.DISPLAY_ORDER';
+    GroupQuery.ParamByName('MENU_ID').AsInteger := AMenuID;
+    GroupQuery.ParamByName('STORE_ID').AsInteger := FStoreID;
+    GroupQuery.Open;
+    if GroupQuery.IsEmpty then Exit;
+
+    DialogForm.Caption := '메뉴 옵션 선택';
+    DialogForm.Font.Name := Font.Name;
+    DialogForm.Position := poScreenCenter;
+    DialogForm.BorderStyle := bsDialog;
+    DialogForm.Width := 440;
+    DialogForm.Height := 560;
+
+    Scroll := TScrollBox.Create(DialogForm);
+    Scroll.Parent := DialogForm;
+    Scroll.Align := alClient;
+
+    GroupCount := 0;
+    GroupTop := 8;
+    OptionQuery.Connection := dmDatabase.Connection;
+    while not GroupQuery.Eof do
+    begin
+      SetLength(Groups, GroupCount + 1);
+      Groups[GroupCount].GroupName := GroupQuery.FieldByName('GROUP_NAME').AsString;
+      Groups[GroupCount].Required := SameText(
+        GroupQuery.FieldByName('REQUIRED_YN').AsString, 'Y');
+      Groups[GroupCount].MaxSelect := GroupQuery.FieldByName('MAX_SELECT').AsInteger;
+
+      GroupLabel := TLabel.Create(DialogForm);
+      GroupLabel.Parent := Scroll;
+      GroupLabel.Left := 12;
+      GroupLabel.Top := GroupTop;
+      GroupLabel.Caption := Groups[GroupCount].GroupName;
+      GroupLabel.Font.Style := [fsBold];
+      GroupTop := GroupTop + 24;
+
+      Groups[GroupCount].List := TCheckListBox.Create(DialogForm);
+      Groups[GroupCount].List.Parent := Scroll;
+      Groups[GroupCount].List.Left := 12;
+      Groups[GroupCount].List.Top := GroupTop;
+      Groups[GroupCount].List.Width := 390;
+      Groups[GroupCount].List.Height := 24;
+      Groups[GroupCount].List.IntegralHeight := True;
+      OptionQuery.Close;
+      OptionQuery.SQL.Text :=
+        'SELECT OPTION_ID, OPTION_NAME FROM MENU_OPTION ' +
+        'WHERE OPTION_GROUP_ID=:GROUP_ID AND ACTIVE_YN=''Y'' ' +
+        'ORDER BY DISPLAY_ORDER, OPTION_ID';
+      OptionQuery.ParamByName('GROUP_ID').AsInteger :=
+        GroupQuery.FieldByName('OPTION_GROUP_ID').AsInteger;
+      OptionQuery.Open;
+      while not OptionQuery.Eof do
+      begin
+        Groups[GroupCount].List.Items.AddObject(
+          OptionQuery.FieldByName('OPTION_NAME').AsString,
+          TObject(Pointer(NativeInt(OptionQuery.FieldByName('OPTION_ID').AsInteger))));
+        OptionQuery.Next;
+      end;
+      Groups[GroupCount].List.Height := Max(28,
+        Groups[GroupCount].List.Items.Count * 20 + 4);
+      GroupTop := GroupTop + Groups[GroupCount].List.Height + 12;
+      Inc(GroupCount);
+      GroupQuery.Next;
+    end;
+    Scroll.VertScrollBar.Range := GroupTop;
+
+    OkButton := TButton.Create(DialogForm);
+    OkButton.Parent := DialogForm;
+    OkButton.Caption := '선택 완료';
+    OkButton.ModalResult := mrOk;
+    OkButton.Default := True;
+    OkButton.Left := 210;
+    OkButton.Top := 480;
+    OkButton.Width := 95;
+
+    CancelButton := TButton.Create(DialogForm);
+    CancelButton.Parent := DialogForm;
+    CancelButton.Caption := '취소';
+    CancelButton.ModalResult := mrCancel;
+    CancelButton.Cancel := True;
+    CancelButton.Left := 315;
+    CancelButton.Top := 480;
+    CancelButton.Width := 85;
+
+    if DialogForm.ShowModal <> mrOk then
+    begin
+      Result := False;
+      Exit;
+    end;
+
+    PriceQuery.Connection := dmDatabase.Connection;
+    for I := 0 to GroupCount - 1 do
+    begin
+      SelectedCount := 0;
+      for J := 0 to Groups[I].List.Items.Count - 1 do
+        if Groups[I].List.Checked[J] then Inc(SelectedCount);
+      if Groups[I].Required and (SelectedCount = 0) then
+      begin
+        MessageDlg(Groups[I].GroupName + ' 옵션을 선택해 주세요.',
+          mtWarning, [mbOK], 0);
+        Result := False;
+        Exit;
+      end;
+      if (Groups[I].MaxSelect > 0) and
+        (SelectedCount > Groups[I].MaxSelect) then
+      begin
+        MessageDlg(Groups[I].GroupName + ' 옵션은 최대 ' +
+          IntToStr(Groups[I].MaxSelect) + '개까지 선택할 수 있습니다.',
+          mtWarning, [mbOK], 0);
+        Result := False;
+        Exit;
+      end;
+      for J := 0 to Groups[I].List.Items.Count - 1 do
+        if Groups[I].List.Checked[J] then
+        begin
+          OptionID := NativeInt(Pointer(Groups[I].List.Items.Objects[J]));
+          OptionName := Groups[I].List.Items[J];
+          PriceQuery.Close;
+          PriceQuery.SQL.Text :=
+            'SELECT ADD_PRICE FROM MENU_OPTION WHERE OPTION_ID=:OPTION_ID';
+          PriceQuery.ParamByName('OPTION_ID').AsInteger := OptionID;
+          PriceQuery.Open;
+          AOptionAmount := AOptionAmount + PriceQuery.Fields[0].AsCurrency;
+          if AOptionText <> '' then AOptionText := AOptionText + ', ';
+          AOptionText := AOptionText + Groups[I].GroupName + ':' + OptionName;
+        end;
+    end;
+  finally
+    DialogForm.Free;
+    PriceQuery.Free;
+    OptionQuery.Free;
+    GroupQuery.Free;
+  end;
+end;
+
 procedure TfrmSales.AddCartItem(AMenuID: Integer; const AMenuName: string;
-  APrice: Currency);
+  APrice, AOptionAmount: Currency; const AOptionText: string);
 var
   I, N: Integer;
 begin
   for I := 0 to High(FCart) do
-    if FCart[I].MenuID = AMenuID then
+    if (FCart[I].MenuID = AMenuID) and
+      SameText(FCart[I].OptionText, AOptionText) then
     begin
       Inc(FCart[I].Quantity);
       RefreshCart;
@@ -387,8 +566,10 @@ begin
   SetLength(FCart, N + 1);
   FCart[N].MenuID := AMenuID;
   FCart[N].MenuName := AMenuName;
-  FCart[N].UnitPrice := APrice;
+  FCart[N].UnitPrice := APrice + AOptionAmount;
   FCart[N].Quantity := 1;
+  FCart[N].OptionText := AOptionText;
+  FCart[N].OptionAmount := AOptionAmount;
   RefreshCart;
 end;
 
@@ -409,6 +590,9 @@ begin
   for I := 0 to High(FCart) do
   begin
     FCartGrid.Cells[0, I + 1] := FCart[I].MenuName;
+    if FCart[I].OptionText <> '' then
+      FCartGrid.Cells[0, I + 1] := FCartGrid.Cells[0, I + 1] +
+        ' [' + FCart[I].OptionText + ']';
     FCartGrid.Cells[1, I + 1] := FormatCurr('#,##0', FCart[I].UnitPrice);
     FCartGrid.Cells[2, I + 1] := IntToStr(FCart[I].Quantity);
     FCartGrid.Cells[3, I + 1] := FormatCurr('#,##0',
@@ -568,8 +752,8 @@ begin
         Q.ParamByName('UNIT_PRICE').AsCurrency := FCart[I].UnitPrice;
         Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
         Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
-        Q.ParamByName('OPTION_TEXT').AsString := '';
-        Q.ParamByName('OPTION_AMOUNT').AsCurrency := 0;
+        Q.ParamByName('OPTION_TEXT').AsString := FCart[I].OptionText;
+        Q.ParamByName('OPTION_AMOUNT').AsCurrency := FCart[I].OptionAmount;
         Q.ExecSQL;
       end;
 
