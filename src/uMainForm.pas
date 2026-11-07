@@ -133,8 +133,15 @@ begin
 
   ReportForm := TfrmSalesReport.Create(Self);
   try
-    ReportForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
-    ReportForm.ShowModal;
+    try
+      ReportForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      ReportForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('매출관리 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/07_sales_closing.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
   finally
     ReportForm.Free;
   end;
