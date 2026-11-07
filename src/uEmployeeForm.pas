@@ -4,7 +4,7 @@ interface
 uses
   System.SysUtils, System.Classes, Vcl.Graphics, Vcl.Controls, Vcl.Forms,
   Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.DBGrids, Data.DB,
-  FireDAC.Comp.Client, uAuth;
+  FireDAC.Comp.Client, System.UITypes, uAuth;
 
 type
   TfrmEmployee = class(TForm)
