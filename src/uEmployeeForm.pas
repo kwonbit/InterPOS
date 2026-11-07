@@ -26,6 +26,8 @@ type
     FQuery: TFDQuery;
     FDataSource: TDataSource;
     procedure RefreshEmployees;
+    procedure DataSourceDataChange(Sender: TObject; Field: TField);
+    procedure UpdateAccountToggleButton;
     function SelectedEmployeeID: Integer;
   public
     procedure SetActor(const AActor: TEmployeeSession);
@@ -47,7 +49,10 @@ begin
   FQuery.Connection := dmDatabase.Connection;
   FDataSource := TDataSource.Create(Self);
   FDataSource.DataSet := FQuery;
+  FDataSource.OnDataChange := DataSourceDataChange;
   grdEmployees.DataSource := FDataSource;
+  btnDeactivate.Caption := '사용 중지';
+  btnDeactivate.Enabled := False;
 end;
 
 procedure TfrmEmployee.SetActor(const AActor: TEmployeeSession);
@@ -61,7 +66,7 @@ begin
   FQuery.Close;
   FQuery.SQL.Text :=
     'SELECT EMPLOYEE_ID, EMPLOYEE_NAME, LOGIN_ID, ROLE_CODE, ' +
-    'CASE WHEN ACTIVE_YN = ''Y'' THEN ''사용'' ELSE ''중지'' END AS ACCOUNT_STATUS ' +
+    'ACTIVE_YN, CASE WHEN ACTIVE_YN = ''Y'' THEN ''사용 중'' ELSE ''사용 중지'' END AS ACCOUNT_STATUS ' +
     'FROM EMPLOYEE WHERE STORE_ID = :STORE_ID ORDER BY EMPLOYEE_ID';
   FQuery.ParamByName('STORE_ID').AsInteger := FActor.StoreID;
   FQuery.Open;
@@ -77,6 +82,27 @@ begin
   begin FieldName := 'ROLE_CODE'; Title.Caption := '권한'; Width := 110; end;
   with grdEmployees.Columns.Add do
   begin FieldName := 'ACCOUNT_STATUS'; Title.Caption := '상태'; Width := 100; end;
+  UpdateAccountToggleButton;
+end;
+
+procedure TfrmEmployee.DataSourceDataChange(Sender: TObject; Field: TField);
+begin
+  UpdateAccountToggleButton;
+end;
+
+procedure TfrmEmployee.UpdateAccountToggleButton;
+begin
+  btnDeactivate.Enabled := Assigned(FQuery) and FQuery.Active and not FQuery.IsEmpty;
+  if not btnDeactivate.Enabled then
+  begin
+    btnDeactivate.Caption := '사용 중지';
+    Exit;
+  end;
+
+  if SameText(FQuery.FieldByName('ACTIVE_YN').AsString, 'Y') then
+    btnDeactivate.Caption := '사용 중지'
+  else
+    btnDeactivate.Caption := '사용하기';
 end;
 
 function TfrmEmployee.SelectedEmployeeID: Integer;
@@ -188,22 +214,35 @@ end;
 procedure TfrmEmployee.btnDeactivateClick(Sender: TObject);
 var
   EmployeeID: Integer;
+  WillActivate: Boolean;
+  ConfirmText: string;
 begin
   EmployeeID := SelectedEmployeeID;
   if EmployeeID = 0 then
   begin
-    MessageDlg('사용 중지할 직원을 선택해 주세요.', mtWarning, [mbOK], 0);
+    MessageDlg('상태를 변경할 직원을 선택해 주세요.', mtWarning, [mbOK], 0);
     Exit;
   end;
-  if MessageDlg('선택한 직원의 로그인을 중지하시겠습니까?',
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+
+  WillActivate := not SameText(FQuery.FieldByName('ACTIVE_YN').AsString, 'Y');
+  if WillActivate then
+    ConfirmText := '선택한 직원의 계정을 다시 사용하도록 변경하시겠습니까?'
+  else
+    ConfirmText := '선택한 직원의 로그인을 중지하시겠습니까?';
+
+  if MessageDlg(ConfirmText, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
 
   try
-    DeactivateEmployee(dmDatabase.Connection, FActor, EmployeeID);
+    WillActivate := ToggleEmployeeActive(dmDatabase.Connection, FActor, EmployeeID);
+    if WillActivate then
+      MessageDlg('직원 계정이 사용 상태로 변경되었습니다.', mtInformation, [mbOK], 0)
+    else
+      MessageDlg('직원 계정이 중지되었습니다.', mtInformation, [mbOK], 0);
     RefreshEmployees;
   except
     on E: Exception do
-      MessageDlg('직원 사용 중지 실패: ' + E.Message, mtError, [mbOK], 0);
+      MessageDlg('직원 계정 상태 변경 실패: ' + E.Message, mtError, [mbOK], 0);
   end;
 end;
 
