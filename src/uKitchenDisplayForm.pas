@@ -36,6 +36,15 @@ implementation
 uses
   uDatabase, uKitchenPrinter;
 
+function KitchenStatusCaption(const AStatus: string): string;
+begin
+  if SameText(AStatus, 'NEW') then Result := '접수대기'
+  else if SameText(AStatus, 'PREPARING') then Result := '조리시작'
+  else if SameText(AStatus, 'READY') then Result := '조리완료'
+  else if SameText(AStatus, 'CANCELLED') then Result := '주문취소'
+  else Result := AStatus;
+end;
+
 constructor TfrmKitchenDisplay.CreateKitchen(AOwner: TComponent;
   AStoreID: Integer);
 begin
@@ -248,7 +257,7 @@ begin
       FTicketGrid.Cells[2, Row] := Q.FieldByName('TABLE_NAME').AsString;
       FTicketGrid.Cells[3, Row] :=
         FormatDateTime('hh:nn:ss', Q.FieldByName('CREATED_AT').AsDateTime);
-      FTicketGrid.Cells[4, Row] := Q.FieldByName('STATUS').AsString;
+      FTicketGrid.Cells[4, Row] := KitchenStatusCaption(Q.FieldByName('STATUS').AsString);
       if Q.FieldByName('KITCHEN_TICKET_ID').AsLargeInt = SelectedID then
         FTicketGrid.Row := Row;
       Inc(Row);
