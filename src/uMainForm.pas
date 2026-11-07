@@ -36,7 +36,7 @@ var
 implementation
 
 uses
-  uDatabase;
+  uDatabase, uEmployeeForm;
 
 {$R *.dfm}
 
@@ -74,8 +74,16 @@ begin
 end;
 
 procedure TfrmMain.btnEmployeesClick(Sender: TObject);
+var
+  EmployeeForm: TfrmEmployee;
 begin
-  ShowMessage('직원 등록 및 상세 권한 설정 화면은 다음 개발 단계에서 구현합니다.');
+  EmployeeForm := TfrmEmployee.Create(Self);
+  try
+    EmployeeForm.SetActor(FSession);
+    EmployeeForm.ShowModal;
+  finally
+    EmployeeForm.Free;
+  end;
 end;
 
 end.
