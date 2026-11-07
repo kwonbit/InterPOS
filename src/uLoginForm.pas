@@ -1,4 +1,5 @@
-unit uLoginForm;
+﻿unit uLoginForm;
+{$CODEPAGE UTF8}
 
 interface
 
