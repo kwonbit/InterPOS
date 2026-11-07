@@ -1,4 +1,4 @@
-unit uMasterDataForm;
+﻿unit uMasterDataForm;
 
 interface
 
