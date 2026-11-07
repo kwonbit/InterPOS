@@ -21,6 +21,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
     procedure btnSalesClick(Sender: TObject);
+    procedure btnTableClick(Sender: TObject);
+    procedure btnMenuClick(Sender: TObject);
     procedure btnEmployeeClick(Sender: TObject);
   private
     FSession: TEmployeeSession;
@@ -35,7 +37,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm;
+  uDatabase, uEmployeeForm, uMasterDataForm;
 
 {$R *.dfm}
 
@@ -44,6 +46,8 @@ begin
   FSession := ASession;
   btnEmployee.Visible := SameText(FSession.RoleCode, 'OWNER') or
     SameText(FSession.RoleCode, 'MANAGER');
+  btnTable.Visible := btnEmployee.Visible;
+  btnMenu.Visible := btnEmployee.Visible;
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -85,6 +89,49 @@ end;
 procedure TfrmMain.btnSalesClick(Sender: TObject);
 begin
   ShowMessage('POS '#$D310#$B9E4' '#$D654#$BA74#$C740' '#$B2E4#$C74C' '#$AC1C#$BC1C' '#$B2E8#$ACC4#$C5D0#$C11C' '#$AD6C#$D604#$D569#$B2C8#$B2E4'.');
+end;
+
+
+procedure TfrmMain.btnTableClick(Sender: TObject);
+var
+  MasterForm: TfrmMasterData;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('테이블 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  MasterForm := TfrmMasterData.Create(Self);
+  try
+    MasterForm.SetStoreID(dmDatabase.StoreID);
+    MasterForm.ShowPage(0);
+    MasterForm.ShowModal;
+  finally
+    MasterForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnMenuClick(Sender: TObject);
+var
+  MasterForm: TfrmMasterData;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('메뉴 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  MasterForm := TfrmMasterData.Create(Self);
+  try
+    MasterForm.SetStoreID(dmDatabase.StoreID);
+    MasterForm.ShowPage(1);
+    MasterForm.ShowModal;
+  finally
+    MasterForm.Free;
+  end;
 end;
 
 procedure TfrmMain.btnEmployeeClick(Sender: TObject);
