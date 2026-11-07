@@ -72,6 +72,8 @@ begin
   btnEmployee.Caption := '직원 관리';
   btnClose.Font.Name := Font.Name;
   btnClose.Caption := '로그아웃';
+  btnKitchen.Font.Name := Font.Name;
+  btnKitchen.Caption := '주방 주문현황';
   UpdateDatabaseStatus;
 end;
 
