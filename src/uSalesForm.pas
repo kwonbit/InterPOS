@@ -20,7 +20,7 @@ type
     procedure FormCreate(Sender: TObject);
   private
     FStoreID: Integer;
-    FCart: TArray<TCartItem>;
+    FCart: array of TCartItem;
     FTableCombo: TComboBox;
     FCategoryPanel: TScrollBox;
     FMenuPanel: TScrollBox;
