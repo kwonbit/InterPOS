@@ -209,7 +209,7 @@ begin
     while not Q.Eof do
     begin
       FTableCombo.Items.AddObject(Q.FieldByName('TABLE_NAME').AsString,
-        TObject(NativeInt(Q.FieldByName('TABLE_ID').AsInteger)));
+        TObject(Pointer(NativeInt(Q.FieldByName('TABLE_ID').AsInteger))));
       Q.Next;
     end;
   finally
@@ -416,7 +416,7 @@ function TfrmSales.SelectedTableID: Integer;
 begin
   Result := 0;
   if FTableCombo.ItemIndex >= 0 then
-    Result := NativeInt(FTableCombo.Items.Objects[FTableCombo.ItemIndex]);
+    Result := NativeInt(Pointer(FTableCombo.Items.Objects[FTableCombo.ItemIndex]));
 end;
 
 function TfrmSales.NextSequenceValue(const ASequenceName: string): Int64;
