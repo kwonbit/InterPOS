@@ -49,14 +49,12 @@ begin
   FDataSource := TDataSource.Create(Self);
   FDataSource.DataSet := FQuery;
   grdEmployees.DataSource := FDataSource;
-  RefreshEmployees;
 end;
 
 procedure TfrmEmployee.SetActor(const AActor: TEmployeeSession);
 begin
   FActor := AActor;
-  if SameText(FActor.RoleCode, 'MANAGER') then
-    btnAdd.Caption := '직원 등록';
+  RefreshEmployees;
 end;
 
 procedure TfrmEmployee.RefreshEmployees;
@@ -69,19 +67,17 @@ begin
   FQuery.ParamByName('STORE_ID').AsInteger := FActor.StoreID;
   FQuery.Open;
 
-  if grdEmployees.Columns.Count >= 5 then
-  begin
-    grdEmployees.Columns[0].Width := 70;
-    grdEmployees.Columns[1].Width := 150;
-    grdEmployees.Columns[2].Width := 130;
-    grdEmployees.Columns[3].Width := 90;
-    grdEmployees.Columns[4].Width := 90;
-    grdEmployees.Columns[0].Title.Caption := '직원번호';
-    grdEmployees.Columns[1].Title.Caption := '직원명';
-    grdEmployees.Columns[2].Title.Caption := '로그인 ID';
-    grdEmployees.Columns[3].Title.Caption := '권한';
-    grdEmployees.Columns[4].Title.Caption := '상태';
-  end;
+  grdEmployees.Columns.Clear;
+  with grdEmployees.Columns.Add do
+  begin FieldName := 'EMPLOYEE_ID'; Title.Caption := '직원번호'; Width := 80; end;
+  with grdEmployees.Columns.Add do
+  begin FieldName := 'EMPLOYEE_NAME'; Title.Caption := '직원명'; Width := 180; end;
+  with grdEmployees.Columns.Add do
+  begin FieldName := 'LOGIN_ID'; Title.Caption := '로그인 ID'; Width := 180; end;
+  with grdEmployees.Columns.Add do
+  begin FieldName := 'ROLE_CODE'; Title.Caption := '권한'; Width := 110; end;
+  with grdEmployees.Columns.Add do
+  begin FieldName := 'ACCOUNT_STATUS'; Title.Caption := '상태'; Width := 100; end;
 end;
 
 function TfrmEmployee.SelectedEmployeeID: Integer;
@@ -89,6 +85,55 @@ begin
   Result := 0;
   if Assigned(FQuery) and not FQuery.IsEmpty then
     Result := FQuery.FieldByName('EMPLOYEE_ID').AsInteger;
+end;
+
+function PromptMaskedPassword(const ATitle: string; out APassword: string): Boolean;
+var
+  Dlg: TForm;
+  EditPassword: TEdit;
+  Lbl: TLabel;
+  BtnOK, BtnCancel: TButton;
+begin
+  Dlg := TForm.Create(nil);
+  try
+    Dlg.Caption := ATitle;
+    Dlg.Position := poScreenCenter;
+    Dlg.BorderStyle := bsDialog;
+    Dlg.ClientWidth := 380;
+    Dlg.ClientHeight := 140;
+    Lbl := TLabel.Create(Dlg);
+    Lbl.Parent := Dlg;
+    Lbl.Left := 20;
+    Lbl.Top := 20;
+    Lbl.Caption := '새 비밀번호를 입력하세요 (8자 이상).';
+    EditPassword := TEdit.Create(Dlg);
+    EditPassword.Parent := Dlg;
+    EditPassword.Left := 20;
+    EditPassword.Top := 48;
+    EditPassword.Width := 340;
+    EditPassword.PasswordChar := '*';
+    BtnOK := TButton.Create(Dlg);
+    BtnOK.Parent := Dlg;
+    BtnOK.Caption := '확인';
+    BtnOK.ModalResult := mrOk;
+    BtnOK.Default := True;
+    BtnOK.Left := 180;
+    BtnOK.Top := 92;
+    BtnOK.Width := 80;
+    BtnCancel := TButton.Create(Dlg);
+    BtnCancel.Parent := Dlg;
+    BtnCancel.Caption := '취소';
+    BtnCancel.ModalResult := mrCancel;
+    BtnCancel.Cancel := True;
+    BtnCancel.Left := 270;
+    BtnCancel.Top := 92;
+    BtnCancel.Width := 80;
+    Result := Dlg.ShowModal = mrOk;
+    if Result then
+      APassword := EditPassword.Text;
+  finally
+    Dlg.Free;
+  end;
 end;
 
 procedure TfrmEmployee.btnAddClick(Sender: TObject);
@@ -102,7 +147,7 @@ begin
 
   if not InputQuery('직원 등록', '직원 이름을 입력하세요.', EmployeeName) then Exit;
   if not InputQuery('직원 등록', '로그인 ID를 입력하세요.', LoginID) then Exit;
-  if not InputQuery('직원 등록', '초기 비밀번호(8자 이상)를 입력하세요.', Password) then Exit;
+  if not PromptMaskedPassword('직원 초기 비밀번호', Password) then Exit;
 
   if SameText(FActor.RoleCode, 'OWNER') then
     if not InputQuery('직원 권한', '권한 코드 (STAFF 또는 MANAGER)', RoleCode) then Exit;
@@ -131,7 +176,7 @@ begin
   end;
 
   NewPassword := '';
-  if not InputQuery('비밀번호 변경', '새 비밀번호(8자 이상)', NewPassword) then Exit;
+  if not PromptMaskedPassword('직원 비밀번호 변경', NewPassword) then Exit;
   try
     UpdateEmployeePassword(dmDatabase.Connection, FActor, EmployeeID, NewPassword);
     MessageDlg('비밀번호가 변경되었습니다.', mtInformation, [mbOK], 0);
