@@ -26,7 +26,6 @@ object frmEmployee: TfrmEmployee
   end
   object grdEmployees: TDBGrid
     Align = alClient
-    DataSource = nil
     Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgRowSelect, dgConfirmDelete, dgCancelOnExit]
     TabOrder = 1
   end
