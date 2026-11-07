@@ -9,6 +9,7 @@ uses
   uLoginForm in 'uLoginForm.pas' {frmLogin},
   uEmployeeForm in 'uEmployeeForm.pas' {frmEmployee},
   uMasterDataForm in 'uMasterDataForm.pas' {frmMasterData},
+  uSalesForm in 'uSalesForm.pas' {frmSales},
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
