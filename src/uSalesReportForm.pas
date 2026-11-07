@@ -27,6 +27,7 @@ type
     procedure BuildUI;
     procedure RefreshClick(Sender: TObject);
     procedure CloseDayClick(Sender: TObject);
+    procedure ExecuteCloseDay;
     procedure HistoryClick(Sender: TObject);
     procedure ShowCloseHistory;
     procedure RefreshReport;
@@ -415,6 +416,16 @@ begin
 end;
 
 procedure TfrmSalesReport.CloseDayClick(Sender: TObject);
+begin
+  try
+    ExecuteCloseDay;
+  except
+    on E: Exception do
+      MessageDlg('영업마감에 실패했습니다: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmSalesReport.ExecuteCloseDay;
 var
   Q, DetailQ: TFDQuery;
   CloseID, CloseMenuID: Int64;
