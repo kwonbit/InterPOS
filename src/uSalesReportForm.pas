@@ -46,7 +46,7 @@ uses
 
 constructor TfrmSalesReport.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
+  inherited CreateNew(AOwner);
   BuildUI;
 end;
 
