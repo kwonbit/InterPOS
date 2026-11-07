@@ -1,4 +1,5 @@
-unit uAuth;
+﻿unit uAuth;
+{$CODEPAGE UTF8}
 
 interface
 
