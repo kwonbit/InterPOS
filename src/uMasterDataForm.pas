@@ -40,17 +40,17 @@ uses
 
 procedure TfrmMasterData.FormCreate(Sender: TObject);
 begin
-  Caption := '기초정보 관리';
-  Font.Name := '맑은 고딕';
+  Caption := '#$AE30#$CD08#$C815#$BCF4 #$AD00#$B9AC';
+  Font.Name := '#$B9D1#$C740 #$ACE0#$B515';
   Width := 980;
   Height := 620;
   Position := poScreenCenter;
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
-  BuildPage(0, '테이블 관리');
-  BuildPage(1, '음식 종류');
-  BuildPage(2, '음식 메뉴');
+  BuildPage(0, '#$D14C#$C774#$BE14 #$AD00#$B9AC');
+  BuildPage(1, '#$C74C#$C2DD #$C885#$B958');
+  BuildPage(2, '#$C74C#$C2DD #$BA54#$B274');
 end;
 
 procedure TfrmMasterData.SetStoreID(AStoreID: Integer);
@@ -98,9 +98,9 @@ begin
   Panel.Height := 64;
   Panel.BevelOuter := bvNone;
 
-  Captions[0] := '등록';
-  Captions[1] := '수정';
-  Captions[2] := '사용 상태 전환';
+  Captions[0] := '#$B4F1#$B85D';
+  Captions[1] := '#$C218#$C815';
+  Captions[2] := '#$C0AC#$C6A9 #$C0C1#$D0DC #$C804#$D658';
   for I := 0 to 2 do
   begin
     Btn := TButton.Create(Self);
@@ -130,7 +130,7 @@ begin
     end;
   except
     on E: Exception do
-      MessageDlg('기초정보 처리에 실패했습니다: ' + E.Message,
+      MessageDlg('#$AE30#$CD08#$C815#$BCF4 #$CC98#$B9AC#$C5D0 #$C2E4#$D328#$D588#$C2B5#$B2C8#$B2E4: ' + E.Message,
         mtError, [mbOK], 0);
   end;
 end;
@@ -172,18 +172,18 @@ begin
     0:
       FQueries[AIndex].SQL.Text :=
         'SELECT TABLE_ID, TABLE_NAME, TABLE_GROUP, DISPLAY_ORDER, ' +
-        'CASE WHEN ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
+        'CASE WHEN ACTIVE_YN=''Y'' THEN ''#$C0AC#$C6A9'' ELSE ''#$C911#$C9C0'' END AS STATUS ' +
         'FROM POS_TABLE WHERE STORE_ID=:STORE_ID ORDER BY DISPLAY_ORDER, TABLE_ID';
     1:
       FQueries[AIndex].SQL.Text :=
         'SELECT CATEGORY_ID, CATEGORY_NAME, DISPLAY_ORDER, ' +
-        'CASE WHEN ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
+        'CASE WHEN ACTIVE_YN=''Y'' THEN ''#$C0AC#$C6A9'' ELSE ''#$C911#$C9C0'' END AS STATUS ' +
         'FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID ORDER BY DISPLAY_ORDER, CATEGORY_ID';
     2:
       FQueries[AIndex].SQL.Text :=
         'SELECT M.MENU_ID, M.MENU_NAME, M.CATEGORY_ID, C.CATEGORY_NAME, ' +
         'M.PRICE, M.DISPLAY_ORDER, ' +
-        'CASE WHEN M.ACTIVE_YN=''Y'' THEN ''사용'' ELSE ''중지'' END AS STATUS ' +
+        'CASE WHEN M.ACTIVE_YN=''Y'' THEN ''#$C0AC#$C6A9'' ELSE ''#$C911#$C9C0'' END AS STATUS ' +
         'FROM MENU_ITEM M JOIN MENU_CATEGORY C ON C.CATEGORY_ID=M.CATEGORY_ID ' +
         'WHERE M.STORE_ID=:STORE_ID ORDER BY C.DISPLAY_ORDER, M.DISPLAY_ORDER, M.MENU_ID';
   end;
@@ -192,27 +192,27 @@ begin
   FGrids[AIndex].Columns.Clear;
   if AIndex = 0 then
   begin
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_ID'; Title.Caption := '테이블 번호'; Width := 100; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_NAME'; Title.Caption := '테이블명'; Width := 180; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_GROUP'; Title.Caption := '구역'; Width := 160; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 80; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_ID'; Title.Caption := '#$D14C#$C774#$BE14 #$BC88#$D638'; Width := 100; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_NAME'; Title.Caption := '#$D14C#$C774#$BE14#$BA85'; Width := 180; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'TABLE_GROUP'; Title.Caption := '#$AD6C#$C5ED'; Width := 160; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '#$C815#$B82C'; Width := 80; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '#$C0C1#$D0DC'; Width := 90; end;
   end
   else if AIndex = 1 then
   begin
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_ID'; Title.Caption := '종류 번호'; Width := 100; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식 종류'; Width := 220; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 90; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_ID'; Title.Caption := '#$C885#$B958 #$BC88#$D638'; Width := 100; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '#$C74C#$C2DD #$C885#$B958'; Width := 220; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '#$C815#$B82C'; Width := 90; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '#$C0C1#$D0DC'; Width := 90; end;
   end
   else
   begin
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_ID'; Title.Caption := '메뉴 번호'; Width := 90; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_NAME'; Title.Caption := '메뉴명'; Width := 180; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '음식 종류'; Width := 150; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'PRICE'; Title.Caption := '판매 가격'; Width := 110; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '정렬'; Width := 80; end;
-    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '상태'; Width := 90; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_ID'; Title.Caption := '#$BA54#$B274 #$BC88#$D638'; Width := 90; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'MENU_NAME'; Title.Caption := '#$BA54#$B274#$BA85'; Width := 180; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'CATEGORY_NAME'; Title.Caption := '#$C74C#$C2DD #$C885#$B958'; Width := 150; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'PRICE'; Title.Caption := '#$D310#$B9E4 #$AC00#$ACA9'; Width := 110; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'DISPLAY_ORDER'; Title.Caption := '#$C815#$B82C'; Width := 80; end;
+    with FGrids[AIndex].Columns.Add do begin FieldName := 'STATUS'; Title.Caption := '#$C0C1#$D0DC'; Width := 90; end;
   end;
 end;
 
@@ -228,8 +228,8 @@ begin
   case AIndex of
     0:
       begin
-        if not InputQuery('테이블 등록', '테이블 이름을 입력하세요.', NameValue) then Exit;
-        if not InputQuery('테이블 등록', '구역 이름 (선택)', GroupValue) then Exit;
+        if not InputQuery('#$D14C#$C774#$BE14 #$B4F1#$B85D', '#$D14C#$C774#$BE14 #$C774#$B984#$C744 #$C785#$B825#$D558#$C138#$C694.', NameValue) then Exit;
+        if not InputQuery('#$D14C#$C774#$BE14 #$B4F1#$B85D', '#$AD6C#$C5ED #$C774#$B984 (#$C120#$D0DD)', GroupValue) then Exit;
         NewID := NextID('POS_TABLE', 'TABLE_ID');
         Q := TFDQuery.Create(nil);
         try
@@ -246,7 +246,7 @@ begin
       end;
     1:
       begin
-        if not InputQuery('음식 종류 등록', '음식 종류 이름을 입력하세요.', NameValue) then Exit;
+        if not InputQuery('#$C74C#$C2DD #$C885#$B958 #$B4F1#$B85D', '#$C74C#$C2DD #$C885#$B958 #$C774#$B984#$C744 #$C785#$B825#$D558#$C138#$C694.', NameValue) then Exit;
         NewID := NextID('MENU_CATEGORY', 'CATEGORY_ID');
         Q := TFDQuery.Create(nil);
         try
@@ -262,17 +262,17 @@ begin
       end;
     2:
       begin
-        if not InputQuery('메뉴 등록', '메뉴 이름을 입력하세요.', NameValue) then Exit;
+        if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$BA54#$B274 #$C774#$B984#$C744 #$C785#$B825#$D558#$C138#$C694.', NameValue) then Exit;
         CategoryValue := '';
-        if not InputQuery('메뉴 등록', '음식 종류 번호를 입력하세요 (음식 종류 탭에서 확인).', CategoryValue) then Exit;
+        if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$C74C#$C2DD #$C885#$B958 #$BC88#$D638#$B97C #$C785#$B825#$D558#$C138#$C694 (#$C74C#$C2DD #$C885#$B958 #$D0ED#$C5D0#$C11C #$D655#$C778).', CategoryValue) then Exit;
         if not TryStrToInt(Trim(CategoryValue), CategoryID) then
-          raise Exception.Create('음식 종류 번호가 올바르지 않습니다.');
+          raise Exception.Create('#$C74C#$C2DD #$C885#$B958 #$BC88#$D638#$AC00 #$C62C#$BC14#$B974#$C9C0 #$C54A#$C2B5#$B2C8#$B2E4.');
         PriceValue := '0';
-        if not InputQuery('메뉴 등록', '판매 가격을 입력하세요.', PriceValue) then Exit;
+        if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$D310#$B9E4 #$AC00#$ACA9#$C744 #$C785#$B825#$D558#$C138#$C694.', PriceValue) then Exit;
         if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then
-          raise Exception.Create('판매 가격을 올바르게 입력해 주세요.');
+          raise Exception.Create('#$D310#$B9E4 #$AC00#$ACA9#$C744 #$C62C#$BC14#$B974#$AC8C #$C785#$B825#$D574 #$C8FC#$C138#$C694.');
         DescriptionValue := '';
-        if not InputQuery('메뉴 등록', '메뉴 설명 (선택)', DescriptionValue) then Exit;
+        if not InputQuery('#$BA54#$B274 #$B4F1#$B85D', '#$BA54#$B274 #$C124#$BA85 (#$C120#$D0DD)', DescriptionValue) then Exit;
         Q := TFDQuery.Create(nil);
         try
           Q.Connection := dmDatabase.Connection;
@@ -281,7 +281,7 @@ begin
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
           Q.Open;
           if Q.Fields[0].AsInteger = 0 then
-            raise Exception.Create('사용 중인 음식 종류를 찾을 수 없습니다.');
+            raise Exception.Create('#$C0AC#$C6A9 #$C911#$C778 #$C74C#$C2DD #$C885#$B958#$B97C #$CC3E#$C744 #$C218 #$C5C6#$C2B5#$B2C8#$B2E4.');
           Q.Close;
           NewID := NextID('MENU_ITEM', 'MENU_ID');
           Q.SQL.Text := 'INSERT INTO MENU_ITEM (MENU_ID, STORE_ID, CATEGORY_ID, MENU_NAME, PRICE, DESCRIPTION, DISPLAY_ORDER, ACTIVE_YN) ' +
@@ -319,8 +319,8 @@ begin
           Q.ParamByName('STORE_ID').AsInteger := FStoreID;
           Q.ParamByName('ID').AsInteger := ID;
           Q.Open; NameValue := Q.Fields[0].AsString; GroupValue := Q.Fields[1].AsString; Q.Close;
-          if not InputQuery('테이블 수정', '테이블 이름', NameValue) then Exit;
-          if not InputQuery('테이블 수정', '구역 이름', GroupValue) then Exit;
+          if not InputQuery('#$D14C#$C774#$BE14 #$C218#$C815', '#$D14C#$C774#$BE14 #$C774#$B984', NameValue) then Exit;
+          if not InputQuery('#$D14C#$C774#$BE14 #$C218#$C815', '#$AD6C#$C5ED #$C774#$B984', GroupValue) then Exit;
           Q.SQL.Text := 'UPDATE POS_TABLE SET TABLE_NAME=:NAME, TABLE_GROUP=:GRP WHERE STORE_ID=:STORE_ID AND TABLE_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
           Q.ParamByName('GRP').AsString := Trim(GroupValue);
@@ -330,7 +330,7 @@ begin
           Q.SQL.Text := 'SELECT CATEGORY_NAME FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:ID';
           Q.ParamByName('STORE_ID').AsInteger := FStoreID; Q.ParamByName('ID').AsInteger := ID;
           Q.Open; NameValue := Q.Fields[0].AsString; Q.Close;
-          if not InputQuery('음식 종류 수정', '음식 종류 이름', NameValue) then Exit;
+          if not InputQuery('#$C74C#$C2DD #$C885#$B958 #$C218#$C815', '#$C74C#$C2DD #$C885#$B958 #$C774#$B984', NameValue) then Exit;
           Q.SQL.Text := 'UPDATE MENU_CATEGORY SET CATEGORY_NAME=:NAME WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
         end;
@@ -344,18 +344,18 @@ begin
           PriceValue := CurrToStr(Q.Fields[2].AsCurrency);
           DescriptionValue := Q.Fields[3].AsString;
           Q.Close;
-          if not InputQuery('메뉴 수정', '메뉴 이름', NameValue) then Exit;
-          if not InputQuery('메뉴 수정', '음식 종류 번호', CategoryValue) then Exit;
-          if not TryStrToInt(Trim(CategoryValue), CategoryID) then raise Exception.Create('음식 종류 번호가 올바르지 않습니다.');
+          if not InputQuery('#$BA54#$B274 #$C218#$C815', '#$BA54#$B274 #$C774#$B984', NameValue) then Exit;
+          if not InputQuery('#$BA54#$B274 #$C218#$C815', '#$C74C#$C2DD #$C885#$B958 #$BC88#$D638', CategoryValue) then Exit;
+          if not TryStrToInt(Trim(CategoryValue), CategoryID) then raise Exception.Create('#$C74C#$C2DD #$C885#$B958 #$BC88#$D638#$AC00 #$C62C#$BC14#$B974#$C9C0 #$C54A#$C2B5#$B2C8#$B2E4.');
           Q.SQL.Text := 'SELECT COUNT(*) FROM MENU_CATEGORY WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:CAT_ID AND ACTIVE_YN=''Y''';
           Q.ParamByName('STORE_ID').AsInteger := FStoreID;
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
           Q.Open;
-          if Q.Fields[0].AsInteger = 0 then raise Exception.Create('사용 중인 음식 종류를 찾을 수 없습니다.');
+          if Q.Fields[0].AsInteger = 0 then raise Exception.Create('#$C0AC#$C6A9 #$C911#$C778 #$C74C#$C2DD #$C885#$B958#$B97C #$CC3E#$C744 #$C218 #$C5C6#$C2B5#$B2C8#$B2E4.');
           Q.Close;
-          if not InputQuery('메뉴 수정', '판매 가격', PriceValue) then Exit;
-          if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then raise Exception.Create('판매 가격이 올바르지 않습니다.');
-          if not InputQuery('메뉴 수정', '메뉴 설명', DescriptionValue) then Exit;
+          if not InputQuery('#$BA54#$B274 #$C218#$C815', '#$D310#$B9E4 #$AC00#$ACA9', PriceValue) then Exit;
+          if not TryStrToCurr(Trim(PriceValue), Price) or (Price < 0) then raise Exception.Create('#$D310#$B9E4 #$AC00#$ACA9#$C774 #$C62C#$BC14#$B974#$C9C0 #$C54A#$C2B5#$B2C8#$B2E4.');
+          if not InputQuery('#$BA54#$B274 #$C218#$C815', '#$BA54#$B274 #$C124#$BA85', DescriptionValue) then Exit;
           Q.SQL.Text := 'UPDATE MENU_ITEM SET MENU_NAME=:NAME, CATEGORY_ID=:CAT_ID, PRICE=:PRICE, DESCRIPTION=:DESCRIPTION WHERE STORE_ID=:STORE_ID AND MENU_ID=:ID';
           Q.ParamByName('NAME').AsString := Trim(NameValue);
           Q.ParamByName('CAT_ID').AsInteger := CategoryID;
@@ -392,9 +392,9 @@ begin
     CurrentStatus := Q.Fields[0].AsString;
     Q.Close;
     if SameText(CurrentStatus, 'Y') then
-    begin NewStatus := 'N'; MessageText := '선택 항목을 사용 중지하시겠습니까?'; end
+    begin NewStatus := 'N'; MessageText := '#$C120#$D0DD #$D56D#$BAA9#$C744 #$C0AC#$C6A9 #$C911#$C9C0#$D558#$C2DC#$ACA0#$C2B5#$B2C8#$AE4C?'; end
     else
-    begin NewStatus := 'Y'; MessageText := '선택 항목을 다시 사용하시겠습니까?'; end;
+    begin NewStatus := 'Y'; MessageText := '#$C120#$D0DD #$D56D#$BAA9#$C744 #$B2E4#$C2DC #$C0AC#$C6A9#$D558#$C2DC#$ACA0#$C2B5#$B2C8#$AE4C?'; end;
     if MessageDlg(MessageText, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
     case AIndex of
       0: Q.SQL.Text := 'UPDATE POS_TABLE SET ACTIVE_YN=:STATUS WHERE STORE_ID=:STORE_ID AND TABLE_ID=:ID';
