@@ -40,6 +40,8 @@ type
     procedure QuantityMinusClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
     procedure SaveClick(Sender: TObject);
+    procedure TableChanged(Sender: TObject);
+    procedure UpdateTableStatus;
     function SelectedTableID: Integer;
     function NextSequenceValue(const ASequenceName: string): Int64;
     function CartTotal: Currency;
@@ -88,6 +90,7 @@ begin
   FTableCombo.Width := 220;
   FTableCombo.Style := csDropDownList;
   FTableCombo.Font.Name := Font.Name;
+  FTableCombo.OnChange := TableChanged;
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Header;
@@ -217,6 +220,44 @@ begin
   end;
   if FTableCombo.Items.Count > 0 then
     FTableCombo.ItemIndex := 0;
+  UpdateTableStatus;
+end;
+
+procedure TfrmSales.TableChanged(Sender: TObject);
+begin
+  UpdateTableStatus;
+end;
+
+procedure TfrmSales.UpdateTableStatus;
+var
+  Q: TFDQuery;
+  TableName: string;
+begin
+  if FTableCombo.ItemIndex < 0 then
+  begin
+    FStatusLabel.Caption := '등록된 테이블이 없습니다.';
+    Exit;
+  end;
+
+  TableName := FTableCombo.Items[FTableCombo.ItemIndex];
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT FIRST 1 ORDER_NO, TOTAL_AMOUNT FROM POS_ORDER ' +
+      'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+      'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+      'ORDER BY ORDERED_AT DESC';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+    Q.Open;
+    if not Q.IsEmpty then
+      FStatusLabel.Caption := TableName + ' - 진행 중 주문 ' +
+        FormatCurr('#,##0', Q.FieldByName('TOTAL_AMOUNT').AsCurrency) + '원 (추가 주문 가능)'
+    else
+      FStatusLabel.Caption := TableName + ' - 신규 주문';
+  finally
+    Q.Free;
+  end;
 end;
 
 procedure TfrmSales.LoadCategories;
@@ -465,7 +506,8 @@ var
   OrderNo: string;
   Q: TFDQuery;
   I: Integer;
-  Total: Currency;
+  Total, ExistingTotal: Currency;
+  IsExistingOrder: Boolean;
 begin
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
@@ -473,25 +515,45 @@ begin
     raise Exception.Create('주문할 메뉴를 선택해 주세요.');
 
   Total := CartTotal;
+  ExistingTotal := 0;
+  IsExistingOrder := False;
   OrderID := 0;
   dmDatabase.Connection.StartTransaction;
   try
-    OrderID := NextSequenceValue('GEN_POS_ORDER_ID');
-    OrderNo := FormatDateTime('yyyymmddhhnnss', Now) + '-' +
-      FormatFloat('000000', OrderID);
-
     Q := TFDQuery.Create(nil);
     try
       Q.Connection := dmDatabase.Connection;
-      Q.SQL.Text := 'INSERT INTO POS_ORDER ' +
-        '(ORDER_ID, STORE_ID, TABLE_ID, ORDER_NO, ORDER_TYPE, ORDER_STATUS, TOTAL_AMOUNT) ' +
-        'VALUES (:ORDER_ID, :STORE_ID, :TABLE_ID, :ORDER_NO, ''DINE_IN'', ''OPEN'', :TOTAL)';
-      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID, ORDER_NO, TOTAL_AMOUNT FROM POS_ORDER ' +
+        'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+        'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+        'ORDER BY ORDERED_AT DESC';
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
       Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
-      Q.ParamByName('ORDER_NO').AsString := OrderNo;
-      Q.ParamByName('TOTAL').AsCurrency := Total;
-      Q.ExecSQL;
+      Q.Open;
+      if not Q.IsEmpty then
+      begin
+        IsExistingOrder := True;
+        OrderID := Q.FieldByName('ORDER_ID').AsLargeInt;
+        OrderNo := Q.FieldByName('ORDER_NO').AsString;
+        ExistingTotal := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
+      end;
+      Q.Close;
+
+      if not IsExistingOrder then
+      begin
+        OrderID := NextSequenceValue('GEN_POS_ORDER_ID');
+        OrderNo := FormatDateTime('yyyymmddhhnnss', Now) + '-' +
+          FormatFloat('000000', OrderID);
+        Q.SQL.Text := 'INSERT INTO POS_ORDER ' +
+          '(ORDER_ID, STORE_ID, TABLE_ID, ORDER_NO, ORDER_TYPE, ORDER_STATUS, TOTAL_AMOUNT) ' +
+          'VALUES (:ORDER_ID, :STORE_ID, :TABLE_ID, :ORDER_NO, ''DINE_IN'', ''OPEN'', :TOTAL)';
+        Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+        Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+        Q.ParamByName('ORDER_NO').AsString := OrderNo;
+        Q.ParamByName('TOTAL').AsCurrency := Total;
+        Q.ExecSQL;
+      end;
 
       for I := 0 to High(FCart) do
       begin
@@ -510,6 +572,16 @@ begin
         Q.ParamByName('OPTION_AMOUNT').AsCurrency := 0;
         Q.ExecSQL;
       end;
+
+      if IsExistingOrder then
+      begin
+        Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL ' +
+          'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
+        Q.ParamByName('TOTAL').AsCurrency := ExistingTotal + Total;
+        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+        Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+        Q.ExecSQL;
+      end;
     finally
       Q.Free;
     end;
@@ -521,9 +593,14 @@ begin
 
   SetLength(FCart, 0);
   RefreshCart;
-  FStatusLabel.Caption := '주문이 저장되었습니다. 주문번호: ' + OrderNo;
+  UpdateTableStatus;
+  if IsExistingOrder then
+    FStatusLabel.Caption := '기존 주문에 추가 저장되었습니다. 주문번호: ' + OrderNo;
   MessageDlg('주문이 정상적으로 저장되었습니다.' + sLineBreak +
-    '주문번호: ' + OrderNo, mtInformation, [mbOK], 0);
+    '주문번호: ' + OrderNo + sLineBreak +
+    '추가 금액: ' + FormatCurr('#,##0', Total) + '원' + sLineBreak +
+    '테이블 주문 합계: ' + FormatCurr('#,##0', ExistingTotal + Total) + '원',
+    mtInformation, [mbOK], 0);
 end;
 
 end.
