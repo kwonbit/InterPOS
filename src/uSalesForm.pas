@@ -70,7 +70,7 @@ type
 implementation
 
 uses
-  uDatabase, uReceiptPrinter;
+  uDatabase, uReceiptPrinter, uKitchenPrinter;
 
 {$R *.dfm}
 
@@ -990,7 +990,7 @@ end;
 
 procedure TfrmSales.SaveOrder;
 var
-  OrderID, OrderItemID: Int64;
+  OrderID, OrderItemID, KitchenTicketID: Int64;
   OrderNo: string;
   Q: TFDQuery;
   I: Integer;
@@ -1043,12 +1043,22 @@ begin
         Q.ExecSQL;
       end;
 
+      KitchenTicketID := NextSequenceValue('GEN_POS_KITCHEN_TICKET_ID');
+      Q.SQL.Text := 'INSERT INTO POS_KITCHEN_TICKET ' +
+        '(KITCHEN_TICKET_ID, ORDER_ID, TICKET_NO, STATUS) ' +
+        'VALUES (:TICKET_ID, :ORDER_ID, :TICKET_NO, ''NEW'')';
+      Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.ParamByName('TICKET_NO').AsString := OrderNo + '-' +
+        FormatFloat('000000', KitchenTicketID);
+      Q.ExecSQL;
+
       for I := 0 to High(FCart) do
       begin
         OrderItemID := NextSequenceValue('GEN_POS_ORDER_ITEM_ID');
         Q.SQL.Text := 'INSERT INTO POS_ORDER_ITEM ' +
-          '(ORDER_ITEM_ID, ORDER_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT, OPTION_AMOUNT) ' +
-          'VALUES (:ITEM_ID, :ORDER_ID, :MENU_ID, :MENU_NAME, :UNIT_PRICE, :QUANTITY, :LINE_AMOUNT, :OPTION_TEXT, :OPTION_AMOUNT)';
+          '(ORDER_ITEM_ID, ORDER_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT, OPTION_AMOUNT, KITCHEN_TICKET_ID) ' +
+          'VALUES (:ITEM_ID, :ORDER_ID, :MENU_ID, :MENU_NAME, :UNIT_PRICE, :QUANTITY, :LINE_AMOUNT, :OPTION_TEXT, :OPTION_AMOUNT, :TICKET_ID)';
         Q.ParamByName('ITEM_ID').AsLargeInt := OrderItemID;
         Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
         Q.ParamByName('MENU_ID').AsInteger := FCart[I].MenuID;
@@ -1058,6 +1068,7 @@ begin
         Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
         Q.ParamByName('OPTION_TEXT').AsString := FCart[I].OptionText;
         Q.ParamByName('OPTION_AMOUNT').AsCurrency := FCart[I].OptionAmount;
+        Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
         Q.ExecSQL;
       end;
 
@@ -1082,6 +1093,15 @@ begin
   SetLength(FCart, 0);
   RefreshCart;
   UpdateTableStatus;
+  try
+    TKitchenPrinter.PrintTicket(dmDatabase.Connection, FStoreID, KitchenTicketID);
+  except
+    on E: Exception do
+      MessageDlg('주문은 저장되었지만 주방 주문서 출력에 실패했습니다.' +
+        sLineBreak + E.Message + sLineBreak +
+        '주방 주문현황에서 해당 주문서를 선택해 재출력해 주세요.',
+        mtWarning, [mbOK], 0);
+  end;
   if IsExistingOrder then
     FStatusLabel.Caption := '기존 주문에 추가 저장되었습니다. 주문번호: ' + OrderNo;
   MessageDlg('주문이 정상적으로 저장되었습니다.' + sLineBreak +
