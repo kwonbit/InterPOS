@@ -9,13 +9,15 @@ uses
 
 type
   TfrmMasterData = class(TForm)
+  published
+    procedure FormCreate(Sender: TObject);
   private
     FStoreID: Integer;
     FPages: TPageControl;
     FQueries: array[0..2] of TFDQuery;
     FSources: array[0..2] of TDataSource;
     FGrids: array[0..2] of TDBGrid;
-    procedure FormCreate(Sender: TObject);\n    procedure BuildPage(AIndex: Integer; const ACaption: string);
+    procedure BuildPage(AIndex: Integer; const ACaption: string);
     procedure ActionClick(Sender: TObject);
     procedure GridDblClick(Sender: TObject);
     procedure RefreshPage(AIndex: Integer);
@@ -120,10 +122,16 @@ begin
   Code := TButton(Sender).Tag;
   PageIndex := Code div 10;
   ActionIndex := Code mod 10;
-  case ActionIndex of
-    0: AddRecord(PageIndex);
-    1: EditRecord(PageIndex);
-    2: ToggleRecord(PageIndex);
+  try
+    case ActionIndex of
+      0: AddRecord(PageIndex);
+      1: EditRecord(PageIndex);
+      2: ToggleRecord(PageIndex);
+    end;
+  except
+    on E: Exception do
+      MessageDlg('기초정보 처리에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
   end;
 end;
 
