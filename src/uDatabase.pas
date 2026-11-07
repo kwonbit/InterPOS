@@ -1,4 +1,5 @@
-unit uDatabase;
+﻿unit uDatabase;
+{$CODEPAGE UTF8}
 
 interface
 
