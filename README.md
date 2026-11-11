@@ -50,8 +50,9 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 메뉴 품절/판매 재개 처리 및 POS 판매 차단
 - 재고 입고/출고/폐기/실사 조정과 변경 이력
 - 결제 완료 시 재고관리 메뉴 자동 차감 및 재고 부족 결제 차단
+- 현금 결제 시 설정된 ESC/POS 돈통 자동 열기
 - 매니저는 일반 직원 계정만 관리 가능
 
-로그인 및 직원 권한은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md), 기초정보 관리는 [docs/MASTER_DATA.md](docs/MASTER_DATA.md), POS 판매는 [docs/POS_SALES.md](docs/POS_SALES.md), 영업 개점/마감 및 현금시재는 [docs/SHIFT_MANAGEMENT.md](docs/SHIFT_MANAGEMENT.md), 재고관리는 [docs/INVENTORY_MANAGEMENT.md](docs/INVENTORY_MANAGEMENT.md)를 참고하세요.
+로그인 및 직원 권한은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md), 기초정보 관리는 [docs/MASTER_DATA.md](docs/MASTER_DATA.md), POS 판매는 [docs/POS_SALES.md](docs/POS_SALES.md), 영업 개점/마감 및 현금시재는 [docs/SHIFT_MANAGEMENT.md](docs/SHIFT_MANAGEMENT.md), 재고관리는 [docs/INVENTORY_MANAGEMENT.md](docs/INVENTORY_MANAGEMENT.md), 돈통 설정은 [docs/CASH_DRAWER.md](docs/CASH_DRAWER.md)를 참고하세요.
 
 현재 버전은 개발 초기 단계입니다. 이 단계는 Delphi 12에서 컴파일/실행 검증이 필요하며, 실제 매장 운영 전에는 POS 판매, 결제, 프린터, 백업/복구 및 전체 업무 흐름에 대한 추가 구현과 테스트가 필요합니다.
