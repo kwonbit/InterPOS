@@ -33,10 +33,12 @@ type
     FShiftButton: TButton;
     FInventoryButton: TButton;
     FBackupButton: TButton;
+    FSupplierButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
     procedure btnBackupClick(Sender: TObject);
+    procedure btnSupplierClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -47,7 +49,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm;
 
 {$R *.dfm}
 
@@ -65,6 +67,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FBackupButton) then
     FBackupButton.Visible := SameText(FSession.RoleCode, 'OWNER');
+  if Assigned(FSupplierButton) then
+    FSupplierButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -113,6 +118,14 @@ begin
   FBackupButton.Font.Name := Font.Name;
   FBackupButton.Visible := False;
   FBackupButton.OnClick := btnBackupClick;
+
+  FSupplierButton := TButton.Create(Self);
+  FSupplierButton.Parent := pnlWork;
+  FSupplierButton.SetBounds(672, 352, 300, 48);
+  FSupplierButton.Caption := '거래처 관리';
+  FSupplierButton.Font.Name := Font.Name;
+  FSupplierButton.Visible := False;
+  FSupplierButton.OnClick := btnSupplierClick;
   UpdateDatabaseStatus;
 end;
 
@@ -234,6 +247,33 @@ begin
     BackupForm.ShowModal;
   finally
     BackupForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnSupplierClick(Sender: TObject);
+var
+  SupplierForm: TfrmSupplier;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('거래처 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  SupplierForm := TfrmSupplier.Create(Self);
+  try
+    try
+      SupplierForm.SetStoreID(dmDatabase.StoreID);
+      SupplierForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('거래처 관리 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/10_supplier_management.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    SupplierForm.Free;
   end;
 end;
 
