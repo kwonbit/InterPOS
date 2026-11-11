@@ -204,6 +204,7 @@ begin
       'ORDER BY C.DISPLAY_ORDER, M.DISPLAY_ORDER, M.MENU_NAME';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.Open;
+    Q.FetchAll;
 
     FGrid.RowCount := Max(2, Q.RecordCount + 1);
     R := 1;
@@ -231,7 +232,7 @@ begin
     Q.Free;
   end;
 
-  if FGrid.RowCount <= 2 then
+  if R = 1 then
     FStatusLabel.Caption := '등록된 메뉴가 없습니다.'
   else
     FStatusLabel.Caption := '상품을 선택한 후 재고관리 설정, 입고, 출고 또는 실사 조정을 진행하세요.';
@@ -286,8 +287,10 @@ begin
     if ManagedText = 'Y' then
     begin
       if not InputQuery('안전재고 설정', '안전재고 수량을 입력하세요.', LowText) then Exit;
-      if not TryStrToFloat(Trim(LowText), LowQty) or (LowQty < 0) then
-        raise Exception.Create('안전재고 수량을 0 이상의 숫자로 입력해 주세요.');
+      if not TryStrToFloat(Trim(LowText), LowQty) then
+        raise Exception.Create('안전재고 수량을 숫자로 입력해 주세요.');
+      if LowQty < 0 then
+        raise Exception.Create('안전재고 수량은 0 이상이어야 합니다.');
     end;
 
     Q.SQL.Text := 'UPDATE MENU_ITEM SET STOCK_MANAGED_YN=:MANAGED, ' +
