@@ -25,6 +25,7 @@ type
     FOutButton: TButton;
     FCloseButton: TButton;
     FRefreshButton: TButton;
+    FHistoryButton: TButton;
     procedure BuildUI;
     procedure EnsureTerminal;
     procedure RefreshData;
@@ -33,6 +34,8 @@ type
     procedure CashOutClick(Sender: TObject);
     procedure CloseShiftClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
+    procedure HistoryClick(Sender: TObject);
+    procedure ShowShiftHistory;
     procedure AddCashMovement(const AMovementType: string);
     function CurrentShiftID: Int64;
     function ExpectedCash(AShiftID: Int64): Currency;
@@ -174,6 +177,12 @@ begin
   FRefreshButton.SetBounds(614, 12, 120, 42);
   FRefreshButton.Caption := '새로고침';
   FRefreshButton.OnClick := RefreshClick;
+
+  FHistoryButton := TButton.Create(Self);
+  FHistoryButton.Parent := ButtonPanel;
+  FHistoryButton.SetBounds(744, 12, 130, 42);
+  FHistoryButton.Caption := '마감 이력';
+  FHistoryButton.OnClick := HistoryClick;
 end;
 
 procedure TfrmShiftManagement.SetContext(AStoreID, ATerminalID,
@@ -589,6 +598,110 @@ begin
   MessageDlg('영업 마감이 완료되었습니다.' + sLineBreak +
     '시재 차이: ' + FormatCurr('#,##0', Difference) + '원',
     mtInformation, [mbOK], 0);
+end;
+
+
+procedure TfrmShiftManagement.HistoryClick(Sender: TObject);
+begin
+  try
+    ShowShiftHistory;
+  except
+    on E: Exception do
+      MessageDlg('마감 이력 조회에 실패했습니다: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmShiftManagement.ShowShiftHistory;
+var
+  HistoryForm: TForm;
+  Grid: TStringGrid;
+  Q: TFDQuery;
+  Row: Integer;
+begin
+  HistoryForm := TForm.Create(Self);
+  try
+    HistoryForm.Caption := 'POS 단말 영업마감 이력';
+    HistoryForm.Font.Name := Font.Name;
+    HistoryForm.Position := poScreenCenter;
+    HistoryForm.Width := 1180;
+    HistoryForm.Height := 520;
+
+    Grid := TStringGrid.Create(HistoryForm);
+    Grid.Parent := HistoryForm;
+    Grid.Align := alClient;
+    Grid.FixedRows := 1;
+    Grid.FixedCols := 0;
+    Grid.ColCount := 9;
+    Grid.RowCount := 2;
+    Grid.DefaultRowHeight := 27;
+    Grid.Options := Grid.Options + [goRowSelect, goColSizing];
+    Grid.Cells[0, 0] := '영업일자';
+    Grid.Cells[1, 0] := '개점시각';
+    Grid.Cells[2, 0] := '마감시각';
+    Grid.Cells[3, 0] := '개점 준비금';
+    Grid.Cells[4, 0] := '예상 시재';
+    Grid.Cells[5, 0] := '실제 시재';
+    Grid.Cells[6, 0] := '시재 차이';
+    Grid.Cells[7, 0] := '개점 직원';
+    Grid.Cells[8, 0] := '마감 직원';
+    Grid.ColWidths[0] := 95;
+    Grid.ColWidths[1] := 120;
+    Grid.ColWidths[2] := 120;
+    Grid.ColWidths[3] := 110;
+    Grid.ColWidths[4] := 110;
+    Grid.ColWidths[5] := 110;
+    Grid.ColWidths[6] := 110;
+    Grid.ColWidths[7] := 120;
+    Grid.ColWidths[8] := 120;
+
+    Q := TFDQuery.Create(nil);
+    try
+      Q.Connection := dmDatabase.Connection;
+      Q.SQL.Text :=
+        'SELECT S.BUSINESS_DATE, S.OPENED_AT, S.CLOSED_AT, S.OPENING_CASH, ' +
+        'S.EXPECTED_CASH, S.COUNTED_CASH, S.CASH_DIFFERENCE, ' +
+        'EO.EMPLOYEE_NAME AS OPENED_BY_NAME, EC.EMPLOYEE_NAME AS CLOSED_BY_NAME ' +
+        'FROM POS_SHIFT S ' +
+        'JOIN EMPLOYEE EO ON EO.EMPLOYEE_ID=S.OPENED_BY ' +
+        'LEFT JOIN EMPLOYEE EC ON EC.EMPLOYEE_ID=S.CLOSED_BY ' +
+        'WHERE S.STORE_ID=:STORE_ID AND S.TERMINAL_ID=:TERMINAL_ID ' +
+        'AND S.SHIFT_STATUS=''CLOSED'' ORDER BY S.OPENED_AT DESC ROWS 100';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
+      Q.Open;
+      Grid.RowCount := Max(2, Q.RecordCount + 1);
+      Row := 1;
+      while not Q.Eof do
+      begin
+        Grid.Cells[0, Row] := FormatDateTime('yyyy-mm-dd',
+          Q.FieldByName('BUSINESS_DATE').AsDateTime);
+        Grid.Cells[1, Row] := FormatDateTime('yyyy-mm-dd hh:nn',
+          Q.FieldByName('OPENED_AT').AsDateTime);
+        Grid.Cells[2, Row] := FormatDateTime('yyyy-mm-dd hh:nn',
+          Q.FieldByName('CLOSED_AT').AsDateTime);
+        Grid.Cells[3, Row] := FormatCurr('#,##0',
+          Q.FieldByName('OPENING_CASH').AsCurrency);
+        Grid.Cells[4, Row] := FormatCurr('#,##0',
+          Q.FieldByName('EXPECTED_CASH').AsCurrency);
+        Grid.Cells[5, Row] := FormatCurr('#,##0',
+          Q.FieldByName('COUNTED_CASH').AsCurrency);
+        Grid.Cells[6, Row] := FormatCurr('#,##0',
+          Q.FieldByName('CASH_DIFFERENCE').AsCurrency);
+        Grid.Cells[7, Row] := Q.FieldByName('OPENED_BY_NAME').AsString;
+        Grid.Cells[8, Row] := Q.FieldByName('CLOSED_BY_NAME').AsString;
+        Inc(Row);
+        Q.Next;
+      end;
+      if Row = 1 then
+        Grid.Cells[0, 1] := '조회된 마감 이력이 없습니다.';
+    finally
+      Q.Free;
+    end;
+    HistoryForm.ShowModal;
+  finally
+    HistoryForm.Free;
+  end;
 end;
 
 procedure TfrmShiftManagement.RefreshClick(Sender: TObject);
