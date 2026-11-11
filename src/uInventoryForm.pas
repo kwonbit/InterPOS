@@ -398,37 +398,43 @@ var
   TypeCode, AmountText, Reason, Description: string;
   Amount: Double;
 begin
-  B := Sender as TButton;
-  if B.Tag = 1 then
-  begin
-    TypeCode := 'IN';
-    Reason := 'PURCHASE';
-    AmountText := '1';
-    if not InputQuery('재고 입고', '입고 수량을 입력하세요.', AmountText) then Exit;
-  end
-  else if B.Tag = 2 then
-  begin
-    TypeCode := 'OUT';
-    Reason := 'MANUAL_OUT';
-    AmountText := '1';
-    if not InputQuery('재고 출고', '출고 수량을 입력하세요.', AmountText) then Exit;
-  end
-  else
-  begin
-    TypeCode := 'ADJUST';
-    Reason := 'STOCKTAKE';
-    AmountText := '0';
-    if not InputQuery('재고 실사 조정', '실제 재고 수량을 입력하세요.', AmountText) then Exit;
-  end;
-
-  if not TryStrToFloat(Trim(AmountText), Amount) or (Amount < 0) then
-    raise Exception.Create('수량을 0 이상의 숫자로 입력해 주세요.');
-  if (TypeCode <> 'ADJUST') and (Amount <= 0) then
-    raise Exception.Create('입고/출고 수량은 0보다 커야 합니다.');
-
-  Description := '';
-  if not InputQuery('재고 사유', '비고를 입력하세요. (선택)', Description) then Exit;
   try
+    B := Sender as TButton;
+    if B.Tag = 1 then
+    begin
+      TypeCode := 'IN';
+      Reason := 'PURCHASE';
+      AmountText := '1';
+      if not InputQuery('재고 입고', '입고 수량을 입력하세요.', AmountText) then Exit;
+    end
+    else if B.Tag = 2 then
+    begin
+      TypeCode := 'OUT';
+      Reason := 'MANUAL_OUT';
+      AmountText := '1';
+      if not InputQuery('재고 출고', '출고 수량을 입력하세요.', AmountText) then Exit;
+    end
+    else
+    begin
+      TypeCode := 'ADJUST';
+      Reason := 'STOCKTAKE';
+      AmountText := '0';
+      if not InputQuery('재고 실사 조정', '실제 재고 수량을 입력하세요.', AmountText) then Exit;
+    end;
+
+    if not TryStrToFloat(Trim(AmountText), Amount) or (Amount < 0) then
+    begin
+      MessageDlg('수량을 0 이상의 숫자로 입력해 주세요.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
+    if (TypeCode <> 'ADJUST') and (Amount <= 0) then
+    begin
+      MessageDlg('입고/출고 수량은 0보다 커야 합니다.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
+
+    Description := '';
+    if not InputQuery('재고 사유', '비고를 입력하세요. (선택)', Description) then Exit;
     RegisterMovement(TypeCode, Amount, Reason, Description);
     MessageDlg('재고 내역이 저장되었습니다.', mtInformation, [mbOK], 0);
   except
