@@ -35,12 +35,14 @@ type
     FBackupButton: TButton;
     FSupplierButton: TButton;
     FPurchaseButton: TButton;
+    FPayablesButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
     procedure btnBackupClick(Sender: TObject);
     procedure btnSupplierClick(Sender: TObject);
     procedure btnPurchaseClick(Sender: TObject);
+    procedure btnPayablesClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -51,7 +53,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm;
 
 {$R *.dfm}
 
@@ -74,6 +76,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FPurchaseButton) then
     FPurchaseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FPayablesButton) then
+    FPayablesButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -139,6 +144,14 @@ begin
   FPurchaseButton.Font.Name := Font.Name;
   FPurchaseButton.Visible := False;
   FPurchaseButton.OnClick := btnPurchaseClick;
+
+  FPayablesButton := TButton.Create(Self);
+  FPayablesButton.Parent := pnlWork;
+  FPayablesButton.SetBounds(672, 480, 300, 48);
+  FPayablesButton.Caption := '거래처 매입현황 / 미지급금';
+  FPayablesButton.Font.Name := Font.Name;
+  FPayablesButton.Visible := False;
+  FPayablesButton.OnClick := btnPayablesClick;
   UpdateDatabaseStatus;
 end;
 
@@ -314,6 +327,33 @@ begin
     end;
   finally
     PurchaseForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnPayablesClick(Sender: TObject);
+var
+  PayablesForm: TfrmPayables;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('미지급금 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  PayablesForm := TfrmPayables.Create(Self);
+  try
+    try
+      PayablesForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      PayablesForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('매입현황 / 미지급금 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/12_supplier_payables.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    PayablesForm.Free;
   end;
 end;
 
