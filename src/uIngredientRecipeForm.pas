@@ -242,7 +242,9 @@ begin
 
   FRecipeGrid := TStringGrid.Create(Self);
   FRecipeGrid.Parent := RightPanel;
-  FRecipeGrid.Align := alClient;
+  FRecipeGrid.Align := alNone;
+  FRecipeGrid.SetBounds(12, 155, 630, 470);
+  FRecipeGrid.Anchors := [akLeft, akTop, akRight, akBottom];
   FRecipeGrid.FixedRows := 1;
   FRecipeGrid.FixedCols := 0;
   FRecipeGrid.ColCount := 4;
