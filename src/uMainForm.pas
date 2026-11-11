@@ -38,6 +38,7 @@ type
     FPayablesButton: TButton;
     FExpenseButton: TButton;
     FFinancialButton: TButton;
+    FIngredientRecipeButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -47,6 +48,7 @@ type
     procedure btnPayablesClick(Sender: TObject);
     procedure btnExpenseClick(Sender: TObject);
     procedure btnFinancialClick(Sender: TObject);
+    procedure btnIngredientsClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -57,7 +59,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm;
 
 {$R *.dfm}
 
@@ -89,6 +91,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FFinancialButton) then
     FFinancialButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FIngredientRecipeButton) then
+    FIngredientRecipeButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -178,6 +183,14 @@ begin
   FFinancialButton.Font.Name := Font.Name;
   FFinancialButton.Visible := False;
   FFinancialButton.OnClick := btnFinancialClick;
+
+  FIngredientRecipeButton := TButton.Create(Self);
+  FIngredientRecipeButton.Parent := pnlWork;
+  FIngredientRecipeButton.SetBounds(32, 296, 300, 48);
+  FIngredientRecipeButton.Caption := '원재료 / 메뉴 레시피 관리';
+  FIngredientRecipeButton.Font.Name := Font.Name;
+  FIngredientRecipeButton.Visible := False;
+  FIngredientRecipeButton.OnClick := btnIngredientsClick;
   UpdateDatabaseStatus;
 end;
 
@@ -434,6 +447,33 @@ begin
     end;
   finally
     FinancialForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnIngredientsClick(Sender: TObject);
+var
+  IngredientForm: TfrmIngredientRecipe;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('원재료 및 레시피 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  IngredientForm := TfrmIngredientRecipe.Create(Self);
+  try
+    try
+      IngredientForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      IngredientForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('원재료 / 메뉴 레시피 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/14_ingredient_recipe_management.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    IngredientForm.Free;
   end;
 end;
 
