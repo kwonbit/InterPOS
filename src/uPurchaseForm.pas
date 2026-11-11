@@ -183,7 +183,7 @@ begin
   FDetailGrid.RowCount := 2;
   FDetailGrid.DefaultRowHeight := 26;
   FDetailGrid.Options := FDetailGrid.Options + [goRowSelect, goColSizing];
-  FDetailGrid.Cells[0,0] := '메뉴번호';
+  FDetailGrid.Cells[0,0] := '품목번호';
   FDetailGrid.Cells[1,0] := '품목명';
   FDetailGrid.Cells[2,0] := '수량';
   FDetailGrid.Cells[3,0] := '매입단가';
@@ -688,7 +688,7 @@ begin
   try
     ReceivePurchase(ID);
     RefreshData;
-    MessageDlg('입고가 확정되었습니다. 재고 및 재고 이력에 반영했습니다.',
+    MessageDlg('입고가 확정되었습니다. 메뉴/원재료 재고 및 이력에 반영했습니다.',
       mtInformation, [mbOK], 0);
   except
     on E: Exception do
