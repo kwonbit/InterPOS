@@ -183,7 +183,7 @@ begin
   FDetailGrid.RowCount := 2;
   FDetailGrid.DefaultRowHeight := 26;
   FDetailGrid.Options := FDetailGrid.Options + [goRowSelect, goColSizing];
-  FDetailGrid.Cells[0,0] := '메뉴번호';
+  FDetailGrid.Cells[0,0] := '품목번호';
   FDetailGrid.Cells[1,0] := '품목명';
   FDetailGrid.Cells[2,0] := '수량';
   FDetailGrid.Cells[3,0] := '매입단가';
@@ -282,10 +282,16 @@ begin
   Q := NewQuery;
   try
     Q.SQL.Text :=
-      'SELECT D.MENU_ID, M.MENU_NAME, D.QUANTITY, D.UNIT_COST, D.LINE_AMOUNT ' +
-      'FROM POS_PURCHASE_ITEM D JOIN MENU_ITEM M ON M.MENU_ID=D.MENU_ID ' +
+      'SELECT D.MENU_ID, CAST(NULL AS BIGINT) AS INGREDIENT_ID, M.MENU_NAME AS ITEM_NAME, ' +
+      'D.QUANTITY, D.UNIT_COST, D.LINE_AMOUNT FROM POS_PURCHASE_ITEM D ' +
+      'JOIN MENU_ITEM M ON M.MENU_ID=D.MENU_ID ' +
       'WHERE D.STORE_ID=:STORE_ID AND D.PURCHASE_ID=:PURCHASE_ID ' +
-      'ORDER BY D.PURCHASE_ITEM_ID';
+      'UNION ALL ' +
+      'SELECT CAST(NULL AS INTEGER), D.INGREDIENT_ID, I.INGREDIENT_NAME, ' +
+      'D.QUANTITY, D.UNIT_COST, D.LINE_AMOUNT FROM POS_INGREDIENT_PURCHASE_ITEM D ' +
+      'JOIN POS_INGREDIENT I ON I.INGREDIENT_ID=D.INGREDIENT_ID ' +
+      'WHERE D.STORE_ID=:STORE_ID AND D.PURCHASE_ID=:PURCHASE_ID ' +
+      'ORDER BY 3';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.ParamByName('PURCHASE_ID').AsLargeInt := SelectedPurchaseID;
     Q.Open;
@@ -293,8 +299,16 @@ begin
     R := 1;
     while not Q.Eof do
     begin
-      FDetailGrid.Cells[0,R] := Q.FieldByName('MENU_ID').AsString;
-      FDetailGrid.Cells[1,R] := Q.FieldByName('MENU_NAME').AsString;
+      if Q.FieldByName('INGREDIENT_ID').IsNull then
+      begin
+        FDetailGrid.Cells[0,R] := Q.FieldByName('MENU_ID').AsString;
+        FDetailGrid.Cells[1,R] := '[메뉴] ' + Q.FieldByName('ITEM_NAME').AsString;
+      end
+      else
+      begin
+        FDetailGrid.Cells[0,R] := Q.FieldByName('INGREDIENT_ID').AsString;
+        FDetailGrid.Cells[1,R] := '[원재료] ' + Q.FieldByName('ITEM_NAME').AsString;
+      end;
       FDetailGrid.Cells[2,R] := FormatFloat('#,##0.###', Q.FieldByName('QUANTITY').AsFloat);
       FDetailGrid.Cells[3,R] := FormatCurr('#,##0.00', Q.FieldByName('UNIT_COST').AsCurrency);
       FDetailGrid.Cells[4,R] := FormatCurr('#,##0.00', Q.FieldByName('LINE_AMOUNT').AsCurrency);
@@ -342,9 +356,11 @@ end;
 
 procedure TfrmPurchase.ReceivePurchase(APurchaseID: Int64);
 var
-  Q, QItem: TFDQuery;
+  Q, QItem, QIng: TFDQuery;
   MenuID: Integer;
-  Qty, BeforeQty, AfterQty: Double;
+  IngredientID: Int64;
+  Qty, BeforeQty, AfterQty, OldAvgCost, NewAvgCost: Double;
+  UnitCost: Currency;
   MovementID: Int64;
   PaidAmount: Currency;
 begin
@@ -416,6 +432,60 @@ begin
         QItem.Free;
       end;
 
+      QIng := NewQuery;
+      try
+        QIng.SQL.Text := 'SELECT INGREDIENT_ID, QUANTITY, UNIT_COST ' +
+          'FROM POS_INGREDIENT_PURCHASE_ITEM WHERE STORE_ID=:STORE_ID AND PURCHASE_ID=:PURCHASE_ID';
+        QIng.ParamByName('STORE_ID').AsInteger := FStoreID;
+        QIng.ParamByName('PURCHASE_ID').AsLargeInt := APurchaseID;
+        QIng.Open;
+        while not QIng.Eof do
+        begin
+          IngredientID := QIng.FieldByName('INGREDIENT_ID').AsLargeInt;
+          Qty := QIng.FieldByName('QUANTITY').AsFloat;
+          UnitCost := QIng.FieldByName('UNIT_COST').AsCurrency;
+          Q.SQL.Text := 'SELECT STOCK_QTY, AVG_UNIT_COST FROM POS_INGREDIENT ' +
+            'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID AND ACTIVE_YN=''Y'' WITH LOCK';
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+          Q.Open;
+          if Q.IsEmpty then raise Exception.Create('구매 원재료를 찾을 수 없거나 사용 중지 상태입니다.');
+          BeforeQty := Q.FieldByName('STOCK_QTY').AsFloat;
+          OldAvgCost := Q.FieldByName('AVG_UNIT_COST').AsFloat;
+          Q.Close;
+          AfterQty := BeforeQty + Qty;
+          NewAvgCost := ((BeforeQty * OldAvgCost) + (Qty * UnitCost)) / AfterQty;
+          Q.SQL.Text := 'UPDATE POS_INGREDIENT SET STOCK_QTY=:STOCK_QTY, ' +
+            'AVG_UNIT_COST=:AVG_COST, UPDATED_AT=CURRENT_TIMESTAMP ' +
+            'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID';
+          Q.ParamByName('STOCK_QTY').AsFloat := AfterQty;
+          Q.ParamByName('AVG_COST').AsFloat := NewAvgCost;
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+          Q.ExecSQL;
+          MovementID := NextSequenceValue('GEN_POS_INGREDIENT_MOVEMENT_ID');
+          Q.SQL.Text := 'INSERT INTO POS_INGREDIENT_MOVEMENT ' +
+            '(MOVEMENT_ID, STORE_ID, INGREDIENT_ID, MOVEMENT_TYPE, QUANTITY, STOCK_BEFORE, ' +
+            'STOCK_AFTER, UNIT_COST, REFERENCE_TYPE, REFERENCE_ID, DESCRIPTION, EMPLOYEE_ID) ' +
+            'VALUES (:ID, :STORE_ID, :INGREDIENT_ID, ''IN'', :QTY, :BEFORE_QTY, :AFTER_QTY, ' +
+            ':UNIT_COST, ''PURCHASE'', :REFERENCE_ID, :DESCRIPTION, :EMPLOYEE_ID)';
+          Q.ParamByName('ID').AsLargeInt := MovementID;
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+          Q.ParamByName('QTY').AsFloat := Qty;
+          Q.ParamByName('BEFORE_QTY').AsFloat := BeforeQty;
+          Q.ParamByName('AFTER_QTY').AsFloat := AfterQty;
+          Q.ParamByName('UNIT_COST').AsCurrency := UnitCost;
+          Q.ParamByName('REFERENCE_ID').AsLargeInt := APurchaseID;
+          Q.ParamByName('DESCRIPTION').AsString := '원재료 구매 입고 #' + IntToStr(APurchaseID);
+          Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+          Q.ExecSQL;
+          QIng.Next;
+        end;
+      finally
+        QIng.Free;
+      end;
+
       Q.SQL.Text := 'UPDATE POS_PURCHASE SET PURCHASE_STATUS=''RECEIVED'', ' +
         'RECEIVED_BY=:EMPLOYEE_ID, RECEIVED_AT=CURRENT_TIMESTAMP ' +
         'WHERE STORE_ID=:STORE_ID AND PURCHASE_ID=:PURCHASE_ID';
@@ -435,10 +505,11 @@ end;
 
 procedure TfrmPurchase.CancelPurchase(APurchaseID: Int64);
 var
-  Q, QItem: TFDQuery;
+  Q, QItem, QIng: TFDQuery;
   StatusText: UnicodeString;
   MenuID: Integer;
-  Qty, BeforeQty, AfterQty: Double;
+  IngredientID: Int64;
+  Qty, BeforeQty, AfterQty, AvgUnitCost: Double;
   MovementID: Int64;
   PaidAmount: Currency;
 begin
@@ -526,6 +597,63 @@ begin
         finally
           QItem.Free;
         end;
+
+        QIng := NewQuery;
+        try
+          QIng.SQL.Text := 'SELECT INGREDIENT_ID, SUM(QUANTITY) AS TOTAL_QTY ' +
+            'FROM POS_INGREDIENT_PURCHASE_ITEM WHERE STORE_ID=:STORE_ID ' +
+            'AND PURCHASE_ID=:PURCHASE_ID GROUP BY INGREDIENT_ID';
+          QIng.ParamByName('STORE_ID').AsInteger := FStoreID;
+          QIng.ParamByName('PURCHASE_ID').AsLargeInt := APurchaseID;
+          QIng.Open;
+          while not QIng.Eof do
+          begin
+            IngredientID := QIng.FieldByName('INGREDIENT_ID').AsLargeInt;
+            Qty := QIng.FieldByName('TOTAL_QTY').AsFloat;
+            Q.SQL.Text := 'SELECT STOCK_QTY, AVG_UNIT_COST FROM POS_INGREDIENT ' +
+              'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID WITH LOCK';
+            Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+            Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+            Q.Open;
+            if Q.IsEmpty then raise Exception.Create('취소할 원재료 재고를 찾을 수 없습니다.');
+            BeforeQty := Q.FieldByName('STOCK_QTY').AsFloat;
+            AvgUnitCost := Q.FieldByName('AVG_UNIT_COST').AsFloat;
+            Q.Close;
+            if BeforeQty < Qty then
+              raise Exception.CreateFmt('현재고 부족으로 원재료 구매를 취소할 수 없습니다. 원재료번호 %d, 현재고 %.3f, 취소수량 %.3f',
+                [IngredientID, BeforeQty, Qty]);
+            AfterQty := BeforeQty - Qty;
+            Q.SQL.Text := 'UPDATE POS_INGREDIENT SET STOCK_QTY=:STOCK_QTY, ' +
+              'AVG_UNIT_COST=:AVG_COST, UPDATED_AT=CURRENT_TIMESTAMP ' +
+              'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID';
+            Q.ParamByName('STOCK_QTY').AsFloat := AfterQty;
+            if AfterQty = 0 then Q.ParamByName('AVG_COST').AsFloat := 0
+            else Q.ParamByName('AVG_COST').AsFloat := AvgUnitCost;
+            Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+            Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+            Q.ExecSQL;
+            MovementID := NextSequenceValue('GEN_POS_INGREDIENT_MOVEMENT_ID');
+            Q.SQL.Text := 'INSERT INTO POS_INGREDIENT_MOVEMENT ' +
+              '(MOVEMENT_ID, STORE_ID, INGREDIENT_ID, MOVEMENT_TYPE, QUANTITY, STOCK_BEFORE, ' +
+              'STOCK_AFTER, UNIT_COST, REFERENCE_TYPE, REFERENCE_ID, DESCRIPTION, EMPLOYEE_ID) ' +
+              'VALUES (:ID, :STORE_ID, :INGREDIENT_ID, ''OUT'', :QTY, :BEFORE_QTY, :AFTER_QTY, ' +
+              ':UNIT_COST, ''PURCHASE'', :REFERENCE_ID, :DESCRIPTION, :EMPLOYEE_ID)';
+            Q.ParamByName('ID').AsLargeInt := MovementID;
+            Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+            Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+            Q.ParamByName('QTY').AsFloat := Qty;
+            Q.ParamByName('BEFORE_QTY').AsFloat := BeforeQty;
+            Q.ParamByName('AFTER_QTY').AsFloat := AfterQty;
+            Q.ParamByName('UNIT_COST').AsFloat := AvgUnitCost;
+            Q.ParamByName('REFERENCE_ID').AsLargeInt := APurchaseID;
+            Q.ParamByName('DESCRIPTION').AsString := '원재료 구매 취소 #' + IntToStr(APurchaseID);
+            Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+            Q.ExecSQL;
+            QIng.Next;
+          end;
+        finally
+          QIng.Free;
+        end;
       end;
 
       Q.SQL.Text := 'UPDATE POS_PURCHASE SET PURCHASE_STATUS=''CANCELLED'', ' +
@@ -560,7 +688,7 @@ begin
   try
     ReceivePurchase(ID);
     RefreshData;
-    MessageDlg('입고가 확정되었습니다. 재고 및 재고 이력에 반영했습니다.',
+    MessageDlg('입고가 확정되었습니다. 메뉴/원재료 재고 및 이력에 반영했습니다.',
       mtInformation, [mbOK], 0);
   except
     on E: Exception do
