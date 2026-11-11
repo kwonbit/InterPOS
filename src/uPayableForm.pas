@@ -23,7 +23,8 @@ type
     procedure RefreshData;
     procedure LoadHistory;
     procedure SearchClick(Sender: TObject);
-    procedure PaymentClick(Sender: TObject);\n    procedure GridCellClick(Column: TColumn);
+    procedure PaymentClick(Sender: TObject);
+    procedure GridCellClick(Column: TColumn);
     function SelectedPurchaseID: Int64;
     procedure RegisterPayment(APurchaseID: Int64; AAmount: Currency;
       const AMethod, ANote: string);
@@ -261,11 +262,6 @@ end;
 
 procedure TfrmPayables.SearchClick(Sender: TObject);
 begin
-  if Sender is TColumn then
-  begin
-    LoadHistory;
-    Exit;
-  end;
   try
     RefreshData;
   except
