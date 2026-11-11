@@ -193,7 +193,7 @@ end;
 
 procedure TfrmSupplier.EditSupplier(AID: Integer);
 var
-  Q: TFDQuery;
+  QLoad, QSave: TFDQuery;
   NameText, BusinessNo, ContactName, TelText, EmailText, AddressText, NoteText: string;
   function AskField(const ATitle, APrompt: string; var AValue: string): Boolean;
   begin
@@ -208,67 +208,76 @@ begin
   AddressText := '';
   NoteText := '';
 
-  Q := TFDQuery.Create(nil);
-  try
-    Q.Connection := dmDatabase.Connection;
-    if AID > 0 then
-    begin
-      Q.SQL.Text := 'SELECT * FROM POS_SUPPLIER WHERE STORE_ID=:STORE_ID AND SUPPLIER_ID=:ID';
-      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-      Q.ParamByName('ID').AsInteger := AID;
-      Q.Open;
-      if Q.IsEmpty then
+  if AID > 0 then
+  begin
+    QLoad := TFDQuery.Create(nil);
+    try
+      QLoad.Connection := dmDatabase.Connection;
+      QLoad.SQL.Text :=
+        'SELECT SUPPLIER_NAME, BUSINESS_NO, CONTACT_NAME, TEL, EMAIL, ADDRESS, NOTE ' +
+        'FROM POS_SUPPLIER WHERE STORE_ID=:P_STORE_ID AND SUPPLIER_ID=:P_SUPPLIER_ID';
+      QLoad.ParamByName('P_STORE_ID').AsInteger := FStoreID;
+      QLoad.ParamByName('P_SUPPLIER_ID').AsInteger := AID;
+      QLoad.Open;
+      if QLoad.IsEmpty then
         raise Exception.Create('거래처 정보를 찾을 수 없습니다.');
-      NameText := Q.FieldByName('SUPPLIER_NAME').AsString;
-      BusinessNo := Q.FieldByName('BUSINESS_NO').AsString;
-      ContactName := Q.FieldByName('CONTACT_NAME').AsString;
-      TelText := Q.FieldByName('TEL').AsString;
-      EmailText := Q.FieldByName('EMAIL').AsString;
-      AddressText := Q.FieldByName('ADDRESS').AsString;
-      NoteText := Q.FieldByName('NOTE').AsString;
-      Q.Close;
+      NameText := QLoad.FieldByName('SUPPLIER_NAME').AsString;
+      BusinessNo := QLoad.FieldByName('BUSINESS_NO').AsString;
+      ContactName := QLoad.FieldByName('CONTACT_NAME').AsString;
+      TelText := QLoad.FieldByName('TEL').AsString;
+      EmailText := QLoad.FieldByName('EMAIL').AsString;
+      AddressText := QLoad.FieldByName('ADDRESS').AsString;
+      NoteText := QLoad.FieldByName('NOTE').AsString;
+    finally
+      QLoad.Free;
     end;
+  end;
 
-    if not AskField('거래처 등록/수정', '거래처명 (필수)', NameText) then Exit;
-    NameText := Trim(NameText);
-    if NameText = '' then
-      raise Exception.Create('거래처명은 필수입니다.');
-    if not AskField('거래처 정보', '사업자등록번호', BusinessNo) then Exit;
-    if not AskField('거래처 정보', '담당자명', ContactName) then Exit;
-    if not AskField('거래처 정보', '전화번호', TelText) then Exit;
-    if not AskField('거래처 정보', '이메일', EmailText) then Exit;
-    if not AskField('거래처 정보', '주소', AddressText) then Exit;
-    if not AskField('거래처 정보', '비고', NoteText) then Exit;
+  if not AskField('거래처 등록/수정', '거래처명 (필수)', NameText) then Exit;
+  NameText := Trim(NameText);
+  if NameText = '' then
+    raise Exception.Create('거래처명은 필수입니다.');
+  if not AskField('거래처 정보', '사업자등록번호', BusinessNo) then Exit;
+  if not AskField('거래처 정보', '담당자명', ContactName) then Exit;
+  if not AskField('거래처 정보', '전화번호', TelText) then Exit;
+  if not AskField('거래처 정보', '이메일', EmailText) then Exit;
+  if not AskField('거래처 정보', '주소', AddressText) then Exit;
+  if not AskField('거래처 정보', '비고', NoteText) then Exit;
 
+  QSave := TFDQuery.Create(nil);
+  try
+    QSave.Connection := dmDatabase.Connection;
     if AID = 0 then
     begin
-      Q.SQL.Text :=
+      QSave.SQL.Text :=
         'INSERT INTO POS_SUPPLIER (SUPPLIER_ID, STORE_ID, SUPPLIER_NAME, ' +
         'BUSINESS_NO, CONTACT_NAME, TEL, EMAIL, ADDRESS, NOTE) ' +
-        'VALUES (GEN_ID(GEN_POS_SUPPLIER_ID, 1), :STORE_ID, :NAME, ' +
-        ':BIZ, :CONTACT, :TEL, :EMAIL, :ADDRESS, :NOTE)';
+        'VALUES (GEN_ID(GEN_POS_SUPPLIER_ID, 1), :P_STORE_ID, :P_NAME, ' +
+        ':P_BIZ, :P_CONTACT, :P_TEL, :P_EMAIL, :P_ADDRESS, :P_NOTE)';
     end
     else
     begin
-      Q.SQL.Text :=
-        'UPDATE POS_SUPPLIER SET SUPPLIER_NAME=:NAME, BUSINESS_NO=:BIZ, ' +
-        'CONTACT_NAME=:CONTACT, TEL=:TEL, EMAIL=:EMAIL, ADDRESS=:ADDRESS, ' +
-        'NOTE=:NOTE, UPDATED_AT=CURRENT_TIMESTAMP ' +
-        'WHERE STORE_ID=:STORE_ID AND SUPPLIER_ID=:ID';
-      Q.ParamByName('ID').AsInteger := AID;
+      QSave.SQL.Text :=
+        'UPDATE POS_SUPPLIER SET SUPPLIER_NAME=:P_NAME, BUSINESS_NO=:P_BIZ, ' +
+        'CONTACT_NAME=:P_CONTACT, TEL=:P_TEL, EMAIL=:P_EMAIL, ADDRESS=:P_ADDRESS, ' +
+        'NOTE=:P_NOTE, UPDATED_AT=CURRENT_TIMESTAMP ' +
+        'WHERE STORE_ID=:P_STORE_ID AND SUPPLIER_ID=:P_SUPPLIER_ID';
+      QSave.ParamByName('P_SUPPLIER_ID').AsInteger := AID;
     end;
-    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-    Q.ParamByName('NAME').AsString := NameText;
-    Q.ParamByName('BIZ').AsString := BusinessNo;
-    Q.ParamByName('CONTACT').AsString := ContactName;
-    Q.ParamByName('TEL').AsString := TelText;
-    Q.ParamByName('EMAIL').AsString := EmailText;
-    Q.ParamByName('ADDRESS').AsString := AddressText;
-    Q.ParamByName('NOTE').AsString := NoteText;
-    Q.ExecSQL;
+
+    QSave.ParamByName('P_STORE_ID').AsInteger := FStoreID;
+    QSave.ParamByName('P_NAME').AsString := NameText;
+    QSave.ParamByName('P_BIZ').AsString := BusinessNo;
+    QSave.ParamByName('P_CONTACT').AsString := ContactName;
+    QSave.ParamByName('P_TEL').AsString := TelText;
+    QSave.ParamByName('P_EMAIL').AsString := EmailText;
+    QSave.ParamByName('P_ADDRESS').AsString := AddressText;
+    QSave.ParamByName('P_NOTE').AsString := NoteText;
+    QSave.ExecSQL;
   finally
-    Q.Free;
+    QSave.Free;
   end;
+
   RefreshData;
 end;
 
