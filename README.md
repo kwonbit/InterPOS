@@ -40,6 +40,11 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 테이블 진행 주문의 현금/카드 전액 결제 처리
 - 결제 금액 및 결제 수단을 POS_PAYMENT에 저장
 - 현금 결제 시 받은 금액과 거스름돈 계산
+- POS 단말별 영업 개점 및 준비금 등록
+- 영업 중 현금 입금/출금 내역 관리
+- 현금 결제액과 입출금을 반영한 예상 시재 계산
+- 미결제 주문이 남아 있으면 영업마감 차단
+- 실제 시재 입력, 차액 계산 및 단말별 마감 이력 조회
 - 매니저는 일반 직원 계정만 관리 가능
 
 로그인 및 직원 권한의 상세 내용은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)를 참고하세요. 기초정보 관리의 상세 내용은 [docs/MASTER_DATA.md](docs/MASTER_DATA.md)를 참고하세요. POS 판매의 상세 내용은 [docs/POS_SALES.md](docs/POS_SALES.md)를 참고하세요.
