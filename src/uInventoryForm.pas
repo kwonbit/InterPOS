@@ -7,7 +7,7 @@ uses
   Data.DB,
   FireDAC.Comp.Client, FireDAC.Stan.Param,
   Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.Grids, Vcl.Dialogs;
+  Vcl.Grids, Vcl.Dialogs, Vcl.ComCtrls;
 
 type
   TfrmInventory = class(TForm)
@@ -22,6 +22,11 @@ type
     FSoldOutButton: TButton;
     FLowStockOnly: TCheckBox;
     FExportButton: TButton;
+    FHistoryGrid: TStringGrid;
+    FHistoryDateFrom: TDateTimePicker;
+    FHistoryDateTo: TDateTimePicker;
+    FHistoryType: TComboBox;
+    FHistoryMenuName: TEdit;
     procedure BuildUI;
     procedure RefreshData;
     procedure RefreshClick(Sender: TObject);
@@ -32,6 +37,10 @@ type
     procedure LowStockClick(Sender: TObject);
     procedure ExportClick(Sender: TObject);
     procedure ShowHistory(AMenuID: Integer);
+    procedure ShowAllHistory;
+    procedure RefreshAllHistory;
+    procedure HistorySearchClick(Sender: TObject);
+    procedure HistoryExportClick(Sender: TObject);
     function SelectedMenuID: Integer;
     function NextSequenceValue(const ASequenceName: string): Int64;
     procedure RegisterMovement(const AMovementType: string;
@@ -182,7 +191,7 @@ begin
   FHistoryButton := TButton.Create(Self);
   FHistoryButton.Parent := ButtonPanel;
   FHistoryButton.SetBounds(680, 12, 125, 42);
-  FHistoryButton.Caption := '재고 이력';
+  FHistoryButton.Caption := '전체 재고 이력';
   FHistoryButton.OnClick := HistoryClick;
 
   FRefreshButton := TButton.Create(Self);
@@ -641,16 +650,275 @@ begin
 end;
 
 procedure TfrmInventory.HistoryClick(Sender: TObject);
-var
-  MenuID: Integer;
 begin
-  MenuID := SelectedMenuID;
-  if MenuID = 0 then
+  ShowAllHistory;
+end;
+
+procedure TfrmInventory.ShowAllHistory;
+var
+  Dlg: TForm;
+  FilterPanel, ButtonPanel: TPanel;
+  L: TLabel;
+  B: TButton;
+begin
+  Dlg := TForm.Create(Self);
+  try
+    Dlg.Caption := '전체 재고 입출고 이력';
+    Dlg.Font.Name := Font.Name;
+    Dlg.Position := poScreenCenter;
+    Dlg.Width := 1180;
+    Dlg.Height := 650;
+
+    FilterPanel := TPanel.Create(Dlg);
+    FilterPanel.Parent := Dlg;
+    FilterPanel.Align := alTop;
+    FilterPanel.Height := 76;
+    FilterPanel.BevelOuter := bvNone;
+
+    L := TLabel.Create(Dlg);
+    L.Parent := FilterPanel;
+    L.SetBounds(12, 8, 70, 20);
+    L.Caption := '시작일';
+
+    FHistoryDateFrom := TDateTimePicker.Create(Dlg);
+    FHistoryDateFrom.Parent := FilterPanel;
+    FHistoryDateFrom.SetBounds(12, 30, 135, 28);
+    FHistoryDateFrom.Kind := dtkDate;
+    FHistoryDateFrom.Date := Date - 30;
+
+    L := TLabel.Create(Dlg);
+    L.Parent := FilterPanel;
+    L.SetBounds(158, 8, 70, 20);
+    L.Caption := '종료일';
+
+    FHistoryDateTo := TDateTimePicker.Create(Dlg);
+    FHistoryDateTo.Parent := FilterPanel;
+    FHistoryDateTo.SetBounds(158, 30, 135, 28);
+    FHistoryDateTo.Kind := dtkDate;
+    FHistoryDateTo.Date := Date;
+
+    L := TLabel.Create(Dlg);
+    L.Parent := FilterPanel;
+    L.SetBounds(310, 8, 70, 20);
+    L.Caption := '구분';
+
+    FHistoryType := TComboBox.Create(Dlg);
+    FHistoryType.Parent := FilterPanel;
+    FHistoryType.SetBounds(310, 30, 120, 28);
+    FHistoryType.Style := csDropDownList;
+    FHistoryType.Items.Add('전체');
+    FHistoryType.Items.Add('입고');
+    FHistoryType.Items.Add('출고');
+    FHistoryType.Items.Add('실사조정');
+    FHistoryType.ItemIndex := 0;
+
+    L := TLabel.Create(Dlg);
+    L.Parent := FilterPanel;
+    L.SetBounds(447, 8, 100, 20);
+    L.Caption := '메뉴명 검색';
+
+    FHistoryMenuName := TEdit.Create(Dlg);
+    FHistoryMenuName.Parent := FilterPanel;
+    FHistoryMenuName.SetBounds(447, 30, 210, 28);
+
+    B := TButton.Create(Dlg);
+    B.Parent := FilterPanel;
+    B.SetBounds(670, 28, 100, 32);
+    B.Caption := '조회';
+    B.OnClick := HistorySearchClick;
+
+    FHistoryGrid := TStringGrid.Create(Dlg);
+    FHistoryGrid.Parent := Dlg;
+    FHistoryGrid.Align := alClient;
+    FHistoryGrid.FixedRows := 1;
+    FHistoryGrid.FixedCols := 0;
+    FHistoryGrid.ColCount := 9;
+    FHistoryGrid.RowCount := 2;
+    FHistoryGrid.DefaultRowHeight := 27;
+    FHistoryGrid.Options := FHistoryGrid.Options + [goRowSelect, goColSizing];
+    FHistoryGrid.Cells[0, 0] := '일시';
+    FHistoryGrid.Cells[1, 0] := '메뉴명';
+    FHistoryGrid.Cells[2, 0] := '구분';
+    FHistoryGrid.Cells[3, 0] := '수량';
+    FHistoryGrid.Cells[4, 0] := '변경 전';
+    FHistoryGrid.Cells[5, 0] := '변경 후';
+    FHistoryGrid.Cells[6, 0] := '사유';
+    FHistoryGrid.Cells[7, 0] := '비고';
+    FHistoryGrid.Cells[8, 0] := '처리 직원';
+    FHistoryGrid.ColWidths[0] := 140;
+    FHistoryGrid.ColWidths[1] := 180;
+    FHistoryGrid.ColWidths[2] := 85;
+    FHistoryGrid.ColWidths[3] := 85;
+    FHistoryGrid.ColWidths[4] := 85;
+    FHistoryGrid.ColWidths[5] := 85;
+    FHistoryGrid.ColWidths[6] := 100;
+    FHistoryGrid.ColWidths[7] := 220;
+    FHistoryGrid.ColWidths[8] := 120;
+
+    ButtonPanel := TPanel.Create(Dlg);
+    ButtonPanel.Parent := Dlg;
+    ButtonPanel.Align := alBottom;
+    ButtonPanel.Height := 54;
+    ButtonPanel.BevelOuter := bvNone;
+
+    B := TButton.Create(Dlg);
+    B.Parent := ButtonPanel;
+    B.SetBounds(12, 8, 130, 36);
+    B.Caption := 'CSV 내보내기';
+    B.OnClick := HistoryExportClick;
+
+    B := TButton.Create(Dlg);
+    B.Parent := ButtonPanel;
+    B.SetBounds(1040, 8, 110, 36);
+    B.Caption := '닫기';
+    B.ModalResult := mrClose;
+
+    RefreshAllHistory;
+    Dlg.ShowModal;
+  finally
+    FHistoryGrid := nil;
+    FHistoryDateFrom := nil;
+    FHistoryDateTo := nil;
+    FHistoryType := nil;
+    FHistoryMenuName := nil;
+    Dlg.Free;
+  end;
+end;
+
+procedure TfrmInventory.RefreshAllHistory;
+var
+  Q: TFDQuery;
+  R: Integer;
+  TypeCode: string;
+begin
+  if not Assigned(FHistoryGrid) then Exit;
+
+  case FHistoryType.ItemIndex of
+    1: TypeCode := 'IN';
+    2: TypeCode := 'OUT';
+    3: TypeCode := 'ADJUST';
+  else
+    TypeCode := '';
+  end;
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text :=
+      'SELECT M.CREATED_AT, I.MENU_NAME, M.MOVEMENT_TYPE, M.QUANTITY, ' +
+      'M.STOCK_BEFORE, M.STOCK_AFTER, M.REASON_CODE, M.DESCRIPTION, ' +
+      'E.EMPLOYEE_NAME FROM POS_STOCK_MOVEMENT M ' +
+      'JOIN MENU_ITEM I ON I.MENU_ID=M.MENU_ID ' +
+      'JOIN EMPLOYEE E ON E.EMPLOYEE_ID=M.EMPLOYEE_ID ' +
+      'WHERE M.STORE_ID=:STORE_ID ' +
+      'AND CAST(M.CREATED_AT AS DATE) BETWEEN :DATE_FROM AND :DATE_TO ' +
+      'AND (:TYPE_CODE='''' OR M.MOVEMENT_TYPE=:TYPE_CODE) ' +
+      'AND I.MENU_NAME CONTAINING :MENU_NAME ' +
+      'ORDER BY M.CREATED_AT DESC ROWS 1000';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('DATE_FROM').AsDate := FHistoryDateFrom.Date;
+    Q.ParamByName('DATE_TO').AsDate := FHistoryDateTo.Date;
+    Q.ParamByName('TYPE_CODE').AsString := TypeCode;
+    Q.ParamByName('MENU_NAME').AsString := Trim(FHistoryMenuName.Text);
+    Q.Open;
+    Q.FetchAll;
+
+    FHistoryGrid.RowCount := Max(2, Q.RecordCount + 1);
+    R := 1;
+    while not Q.Eof do
+    begin
+      FHistoryGrid.Cells[0, R] := FormatDateTime('yyyy-mm-dd hh:nn',
+        Q.FieldByName('CREATED_AT').AsDateTime);
+      FHistoryGrid.Cells[1, R] := Q.FieldByName('MENU_NAME').AsString;
+      if Q.FieldByName('MOVEMENT_TYPE').AsString = 'IN' then
+        FHistoryGrid.Cells[2, R] := '입고'
+      else if Q.FieldByName('MOVEMENT_TYPE').AsString = 'OUT' then
+        FHistoryGrid.Cells[2, R] := '출고'
+      else
+        FHistoryGrid.Cells[2, R] := '실사조정';
+      FHistoryGrid.Cells[3, R] := FormatFloat('#,##0.###', Q.FieldByName('QUANTITY').AsFloat);
+      FHistoryGrid.Cells[4, R] := FormatFloat('#,##0.###', Q.FieldByName('STOCK_BEFORE').AsFloat);
+      FHistoryGrid.Cells[5, R] := FormatFloat('#,##0.###', Q.FieldByName('STOCK_AFTER').AsFloat);
+      FHistoryGrid.Cells[6, R] := Q.FieldByName('REASON_CODE').AsString;
+      FHistoryGrid.Cells[7, R] := Q.FieldByName('DESCRIPTION').AsString;
+      FHistoryGrid.Cells[8, R] := Q.FieldByName('EMPLOYEE_NAME').AsString;
+      Inc(R);
+      Q.Next;
+    end;
+    if R = 1 then
+      FHistoryGrid.Cells[0, 1] := '조회된 재고 이력이 없습니다.';
+  finally
+    Q.Free;
+  end;
+end;
+
+procedure TfrmInventory.HistorySearchClick(Sender: TObject);
+begin
+  if FHistoryDateFrom.Date > FHistoryDateTo.Date then
   begin
-    MessageDlg('재고 이력을 조회할 메뉴를 선택해 주세요.', mtWarning, [mbOK], 0);
+    MessageDlg('시작일은 종료일보다 늦을 수 없습니다.', mtWarning, [mbOK], 0);
     Exit;
   end;
-  ShowHistory(MenuID);
+  try
+    RefreshAllHistory;
+  except
+    on E: Exception do
+      MessageDlg('재고 이력 조회 실패: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmInventory.HistoryExportClick(Sender: TObject);
+var
+  SaveDialog: TSaveDialog;
+  Lines: TStringList;
+  R, C: Integer;
+  FileName: string;
+  function CsvField(const AValue: string): string;
+  begin
+    Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
+  end;
+begin
+  if not Assigned(FHistoryGrid) then Exit;
+  SaveDialog := TSaveDialog.Create(Self);
+  try
+    SaveDialog.Title := '재고 이력 CSV 저장';
+    SaveDialog.Filter := 'CSV 파일 (*.csv)|*.csv';
+    SaveDialog.DefaultExt := 'csv';
+    SaveDialog.FileName := 'InterPOS_StockHistory_' +
+      FormatDateTime('yyyymmdd_hhnnss', Now) + '.csv';
+    SaveDialog.Options := SaveDialog.Options + [ofPathMustExist, ofOverwritePrompt];
+    if not SaveDialog.Execute then Exit;
+
+    FileName := SaveDialog.FileName;
+    if ExtractFileExt(FileName) = '' then FileName := FileName + '.csv';
+    Lines := TStringList.Create;
+    try
+      for C := 0 to FHistoryGrid.ColCount - 1 do
+      begin
+        if C > 0 then Lines[0] := Lines[0] + ',';
+        if C = 0 then Lines.Add(CsvField(FHistoryGrid.Cells[C, 0]))
+        else Lines[0] := Lines[0] + CsvField(FHistoryGrid.Cells[C, 0]);
+      end;
+      for R := 1 to FHistoryGrid.RowCount - 1 do
+      begin
+        if Trim(FHistoryGrid.Cells[1, R]) = '' then Continue;
+        Lines.Add('');
+        for C := 0 to FHistoryGrid.ColCount - 1 do
+        begin
+          if C > 0 then Lines[Lines.Count - 1] := Lines[Lines.Count - 1] + ',';
+          Lines[Lines.Count - 1] := Lines[Lines.Count - 1] +
+            CsvField(FHistoryGrid.Cells[C, R]);
+        end;
+      end;
+      Lines.SaveToFile(FileName, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    MessageDlg('재고 이력을 CSV로 저장했습니다.' + sLineBreak + FileName,
+      mtInformation, [mbOK], 0);
+  finally
+    SaveDialog.Free;
+  end;
 end;
 
 procedure TfrmInventory.ShowHistory(AMenuID: Integer);
