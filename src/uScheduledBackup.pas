@@ -253,7 +253,7 @@ var
 begin
   if GetSystemDirectory(Buffer, MAX_PATH) = 0 then
     RaiseLastOSError;
-  ExePath := IncludeTrailingPathDelimiter(string(Buffer)) + 'schtasks.exe';
+  ExePath := IncludeTrailingPathDelimiter(string(PChar(@Buffer[0]))) + 'schtasks.exe';
   if not FileExists(ExePath) then
     raise Exception.Create('Windows schtasks.exe를 찾을 수 없습니다.');
   Cmd := QuoteArg(ExePath) + ' ' + AArguments;
