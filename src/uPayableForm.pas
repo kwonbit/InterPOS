@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes,
+  System.SysUtils, System.Classes, System.UITypes, System.Math,
   Data.DB, FireDAC.Comp.Client,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.DBGrids,
   Vcl.Dialogs, Vcl.Graphics;
@@ -23,7 +23,7 @@ type
     procedure RefreshData;
     procedure LoadHistory;
     procedure SearchClick(Sender: TObject);
-    procedure PaymentClick(Sender: TObject);
+    procedure PaymentClick(Sender: TObject);\n    procedure GridCellClick(Column: TColumn);
     function SelectedPurchaseID: Int64;
     procedure RegisterPayment(APurchaseID: Int64; AAmount: Currency;
       const AMethod, ANote: string);
@@ -107,7 +107,7 @@ begin
   FGrid.DataSource := FSource;
   FGrid.ReadOnly := True;
   FGrid.Options := FGrid.Options + [dgRowSelect, dgTitles, dgIndicator];
-  FGrid.OnCellClick := SearchClick;
+  FGrid.OnCellClick := GridCellClick;
 
   FHistory := TStringGrid.Create(Self);
   FHistory.Parent := Self;
