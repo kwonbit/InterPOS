@@ -232,7 +232,6 @@ begin
     try
       FLog.Lines.Add('');
       FLog.Lines.Add('백업 시작: ' + Target);
-      Application.ProcessMessages;
       if not RunGbak('-b -g -v ' + Quote(DatabaseName) + ' ' +
         Quote(Target), Output) then
         raise Exception.Create('gbak 백업 실패.' + sLineBreak + Output);
@@ -300,7 +299,6 @@ begin
     FLog.Lines.Add('');
     FLog.Lines.Add('복구 검증 시작: ' + BackupPath);
     FLog.Lines.Add('대상 DB: ' + DbName);
-    Application.ProcessMessages;
     if not RunGbak('-c -v ' + Quote(BackupPath) + ' ' +
       Quote(DbName), Output) then
       raise Exception.Create('복구 검증 실패.' + sLineBreak + Output);
