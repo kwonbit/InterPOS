@@ -23,6 +23,7 @@ type
     FRecipeQtyEdit: TEdit;
     FSelectedIngredientID: Int64;
     FSelectedRecipeID: Int64;
+    FSelectedIngredientUnit: string;
     procedure BuildUI;
     procedure RefreshIngredients;
     procedure RefreshMenus;
@@ -408,7 +409,8 @@ begin
     not TryStrToInt64(FIngredientGrid.Cells[0,FIngredientGrid.Row], ID) then Exit;
   FSelectedIngredientID := ID;
   FNameEdit.Text := FIngredientGrid.Cells[1,FIngredientGrid.Row];
-  FUnitCombo.ItemIndex := FUnitCombo.Items.IndexOf(FIngredientGrid.Cells[2,FIngredientGrid.Row]);
+  FSelectedIngredientUnit := FIngredientGrid.Cells[2,FIngredientGrid.Row];
+  FUnitCombo.ItemIndex := FUnitCombo.Items.IndexOf(FSelectedIngredientUnit);
   FLowStockEdit.Text := FIngredientGrid.Cells[4,FIngredientGrid.Row];
 end;
 
@@ -420,6 +422,7 @@ end;
 procedure TfrmIngredientRecipe.ClearIngredient;
 begin
   FSelectedIngredientID := 0;
+  FSelectedIngredientUnit := '';
   FNameEdit.Clear;
   FUnitCombo.ItemIndex := 0;
   FLowStockEdit.Text := '0';
@@ -442,6 +445,17 @@ begin
     try
       if FSelectedIngredientID > 0 then
       begin
+        if not SameText(FUnitCombo.Text, FSelectedIngredientUnit) then
+        begin
+          Q.SQL.Text := 'SELECT COUNT(*) FROM POS_MENU_RECIPE ' +
+            'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:ID';
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('ID').AsLargeInt := FSelectedIngredientID;
+          Q.Open;
+          if Q.Fields[0].AsInteger > 0 then
+            raise Exception.Create('등록된 메뉴 레시피가 있는 원재료는 단위를 변경할 수 없습니다. 레시피를 정리한 후 변경해 주세요.');
+          Q.Close;
+        end;
         Q.SQL.Text := 'UPDATE POS_INGREDIENT SET INGREDIENT_NAME=:NAME, ' +
           'UNIT_CODE=:UNIT, LOW_STOCK_QTY=:LOW_QTY, UPDATED_AT=CURRENT_TIMESTAMP ' +
           'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:ID AND ACTIVE_YN=''Y''';
@@ -466,6 +480,7 @@ begin
     end;
     ClearIngredient;
     RefreshIngredients;
+    RefreshRecipes;
     MessageDlg('원재료 정보를 저장했습니다.', mtInformation, [mbOK], 0);
   except
     on E: Exception do
