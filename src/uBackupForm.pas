@@ -164,7 +164,9 @@ var
   PI: TProcessInformation;
   LogPath, PassPath, Cmd: string;
   LogHandle: THandle;
+  SA: TSecurityAttributes;
   ExitCode: DWORD;
+  WaitResult: DWORD;
 begin
   Result := False;
   AOutput := '';
@@ -173,8 +175,11 @@ begin
   PassPath := PasswordFile;
   LogPath := TPath.GetTempFileName;
   try
+    ZeroMemory(@SA, SizeOf(SA));
+    SA.nLength := SizeOf(SA);
+    SA.bInheritHandle := True;
     LogHandle := CreateFile(PChar(LogPath), GENERIC_WRITE,
-      FILE_SHARE_READ or FILE_SHARE_WRITE, nil, CREATE_ALWAYS,
+      FILE_SHARE_READ or FILE_SHARE_WRITE, @SA, CREATE_ALWAYS,
       FILE_ATTRIBUTE_TEMPORARY, 0);
     if LogHandle = INVALID_HANDLE_VALUE then
       RaiseLastOSError;
@@ -195,7 +200,12 @@ begin
         CREATE_NO_WINDOW, nil, PChar(ExtractFilePath(FGbakPath)), SI, PI) then
         RaiseLastOSError;
       try
-        WaitForSingleObject(PI.hProcess, INFINITE);
+        repeat
+          WaitResult := WaitForSingleObject(PI.hProcess, 100);
+          if WaitResult = WAIT_TIMEOUT then Application.ProcessMessages;
+        until WaitResult <> WAIT_TIMEOUT;
+        if WaitResult <> WAIT_OBJECT_0 then
+          RaiseLastOSError;
         if not GetExitCodeProcess(PI.hProcess, ExitCode) then
           RaiseLastOSError;
         Result := ExitCode = 0;
