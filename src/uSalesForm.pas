@@ -73,7 +73,7 @@ type
 implementation
 
 uses
-  uDatabase, uReceiptPrinter, uKitchenPrinter;
+  uDatabase, uReceiptPrinter, uKitchenPrinter, uCashDrawer;
 
 {$R *.dfm}
 
@@ -1075,6 +1075,19 @@ begin
         E.Message + sLineBreak + '영수증 재출력 버튼으로 다시 시도해 주세요.',
         mtWarning, [mbOK], 0);
   end;
+
+  if MethodCode = 'CASH' then
+  begin
+    try
+      TCashDrawer.OpenIfEnabled;
+    except
+      on E: Exception do
+        MessageDlg('결제는 완료되었지만 돈통 열기에 실패했습니다.' + sLineBreak +
+          E.Message + sLineBreak + '돈통 연결 및 [CashDrawer] 설정을 확인해 주세요.',
+          mtWarning, [mbOK], 0);
+    end;
+  end;
+
   MessageDlg('결제가 완료되었습니다.' + sLineBreak +
     '주문번호: ' + OrderNo + sLineBreak +
     '결제수단: ' + IfThen(MethodCode = 'CASH', '현금', '카드') + sLineBreak +

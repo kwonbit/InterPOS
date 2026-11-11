@@ -158,6 +158,7 @@
         </DCCReference>
         <DCCReference Include="uSalesReportForm.pas"/>
         <DCCReference Include="uBackupForm.pas"/>
+        <DCCReference Include="uCashDrawer.pas"/>
         <DCCReference Include="uDatabase.pas">
             <Form>dmDatabase</Form>
             <DesignClass>TDataModule</DesignClass>
