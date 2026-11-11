@@ -553,6 +553,7 @@ begin
       for R := 1 to FGrid.RowCount - 1 do
       begin
         if Trim(FGrid.Cells[1, R]) = '' then Continue;
+        Lines.Add('');
         for C := 0 to 7 do
         begin
           if C > 0 then Lines[Lines.Count - 1] :=
