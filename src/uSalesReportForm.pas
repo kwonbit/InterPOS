@@ -23,12 +23,14 @@ type
     FRefreshButton: TButton;
     FCloseButton: TButton;
     FHistoryButton: TButton;
+    FExportButton: TButton;
     FStatusLabel: TLabel;
     procedure BuildUI;
     procedure RefreshClick(Sender: TObject);
     procedure CloseDayClick(Sender: TObject);
     procedure ExecuteCloseDay;
     procedure HistoryClick(Sender: TObject);
+    procedure ExportClick(Sender: TObject);
     procedure ShowCloseHistory;
     procedure RefreshReport;
     procedure SetStatus(const AText: string);
@@ -130,6 +132,15 @@ begin
   FHistoryButton.Height := 34;
   FHistoryButton.Caption := '마감내역 조회';
   FHistoryButton.OnClick := HistoryClick;
+
+  FExportButton := TButton.Create(Self);
+  FExportButton.Parent := Header;
+  FExportButton.Left := 875;
+  FExportButton.Top := 8;
+  FExportButton.Width := 130;
+  FExportButton.Height := 34;
+  FExportButton.Caption := 'CSV 내보내기';
+  FExportButton.OnClick := ExportClick;
 
   SummaryPanel := TPanel.Create(Self);
   SummaryPanel.Parent := Self;
@@ -331,6 +342,68 @@ begin
   except
     on E: Exception do
       MessageDlg('마감내역 조회에 실패했습니다: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmSalesReport.ExportClick(Sender: TObject);
+var
+  SaveDialog: TSaveDialog;
+  Lines: TStringList;
+  I: Integer;
+  FileName: string;
+  function CsvField(const AValue: string): string;
+  begin
+    Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
+  end;
+begin
+  SaveDialog := TSaveDialog.Create(Self);
+  try
+    SaveDialog.Title := '매출 보고서 CSV 저장';
+    SaveDialog.Filter := 'CSV 파일 (*.csv)|*.csv';
+    SaveDialog.DefaultExt := 'csv';
+    SaveDialog.FileName := 'InterPOS_Sales_' +
+      FormatDateTime('yyyymmdd', FStartDate.Date) + '_' +
+      FormatDateTime('yyyymmdd', FEndDate.Date) + '.csv';
+    SaveDialog.Options := SaveDialog.Options + [ofPathMustExist, ofOverwritePrompt];
+    if not SaveDialog.Execute then
+      Exit;
+
+    FileName := SaveDialog.FileName;
+    if ExtractFileExt(FileName) = '' then
+      FileName := FileName + '.csv';
+
+    Lines := TStringList.Create;
+    try
+      Lines.Add(CsvField('InterPOS 매출 보고서'));
+      Lines.Add(CsvField('조회 시작일') + ',' +
+        CsvField(FormatDateTime('yyyy-mm-dd', FStartDate.Date)));
+      Lines.Add(CsvField('조회 종료일') + ',' +
+        CsvField(FormatDateTime('yyyy-mm-dd', FEndDate.Date)));
+      Lines.Add(CsvField('결제완료 주문') + ',' + CsvField(FOrderLabel.Caption));
+      Lines.Add(CsvField('총 매출') + ',' + CsvField(FTotalLabel.Caption));
+      Lines.Add(CsvField('현금 매출') + ',' + CsvField(FCashLabel.Caption));
+      Lines.Add(CsvField('카드 매출') + ',' + CsvField(FCardLabel.Caption));
+      Lines.Add('');
+      Lines.Add(CsvField('메뉴명') + ',' + CsvField('판매수량') + ',' +
+        CsvField('매출금액'));
+      for I := 1 to FMenuGrid.RowCount - 1 do
+      begin
+        if Trim(FMenuGrid.Cells[0, I]) = '' then
+          Continue;
+        if FMenuGrid.Cells[0, I] = '조회된 판매 내역이 없습니다.' then
+          Continue;
+        Lines.Add(CsvField(FMenuGrid.Cells[0, I]) + ',' +
+          CsvField(FMenuGrid.Cells[1, I]) + ',' +
+          CsvField(FMenuGrid.Cells[2, I]));
+      end;
+      Lines.SaveToFile(FileName, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    MessageDlg('매출 보고서를 저장했습니다.' + sLineBreak + FileName,
+      mtInformation, [mbOK], 0);
+  finally
+    SaveDialog.Free;
   end;
 end;
 
