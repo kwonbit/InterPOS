@@ -1,6 +1,8 @@
 [Database]
 Protocol=TCPIP
-Database=localhost:C:\InterPOS\data\INTERPOS.FDB
+Server=127.0.0.1
+Port=3050
+Database=C:\InterPOS\data\INTERPOS.FDB
 UserName=SYSDBA
 Password=CHANGE_ME
 CharacterSet=UTF8
