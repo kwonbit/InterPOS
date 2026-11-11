@@ -138,9 +138,8 @@ procedure TfrmSupplier.RefreshData;
 begin
   FQuery.Close;
   FQuery.SQL.Text :=
-    'SELECT SUPPLIER_ID, SUPPLIER_NAME AS 거래처명, BUSINESS_NO AS 사업자번호, ' +
-    'CONTACT_NAME AS 담당자, TEL AS 전화번호, EMAIL AS 이메일, ' +
-    'ADDRESS AS 주소, IIF(ACTIVE_YN=''Y'', ''사용'', ''중지'') AS 상태 ' +
+    'SELECT SUPPLIER_ID, SUPPLIER_NAME, BUSINESS_NO, CONTACT_NAME, ' +
+    'TEL, EMAIL, ADDRESS, IIF(ACTIVE_YN=''Y'', ''사용'', ''중지'') AS STATUS_TEXT ' +
     'FROM POS_SUPPLIER WHERE STORE_ID=:STORE_ID ';
   if Trim(FSearch.Text) <> '' then
     FQuery.SQL.Add(
@@ -153,13 +152,13 @@ begin
     FQuery.ParamByName('KEYWORD').AsString := Trim(FSearch.Text);
   FQuery.Open;
   FQuery.FieldByName('SUPPLIER_ID').Visible := False;
-  FQuery.FieldByName('거래처명').DisplayLabel := '거래처명';
-  FQuery.FieldByName('사업자번호').DisplayLabel := '사업자번호';
-  FQuery.FieldByName('담당자').DisplayLabel := '담당자';
-  FQuery.FieldByName('전화번호').DisplayLabel := '전화번호';
-  FQuery.FieldByName('이메일').DisplayLabel := '이메일';
-  FQuery.FieldByName('주소').DisplayLabel := '주소';
-  FQuery.FieldByName('상태').DisplayLabel := '상태';
+  FQuery.FieldByName('SUPPLIER_NAME').DisplayLabel := '거래처명';
+  FQuery.FieldByName('BUSINESS_NO').DisplayLabel := '사업자번호';
+  FQuery.FieldByName('CONTACT_NAME').DisplayLabel := '담당자';
+  FQuery.FieldByName('TEL').DisplayLabel := '전화번호';
+  FQuery.FieldByName('EMAIL').DisplayLabel := '이메일';
+  FQuery.FieldByName('ADDRESS').DisplayLabel := '주소';
+  FQuery.FieldByName('STATUS_TEXT').DisplayLabel := '상태';
 end;
 
 function TfrmSupplier.SelectedSupplierID: Integer;
