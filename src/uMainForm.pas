@@ -36,6 +36,7 @@ type
     FSupplierButton: TButton;
     FPurchaseButton: TButton;
     FPayablesButton: TButton;
+    FExpenseButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -43,6 +44,7 @@ type
     procedure btnSupplierClick(Sender: TObject);
     procedure btnPurchaseClick(Sender: TObject);
     procedure btnPayablesClick(Sender: TObject);
+    procedure btnExpenseClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -53,7 +55,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm;
 
 {$R *.dfm}
 
@@ -79,6 +81,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FPayablesButton) then
     FPayablesButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FExpenseButton) then
+    FExpenseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -152,6 +157,14 @@ begin
   FPayablesButton.Font.Name := Font.Name;
   FPayablesButton.Visible := False;
   FPayablesButton.OnClick := btnPayablesClick;
+
+  FExpenseButton := TButton.Create(Self);
+  FExpenseButton.Parent := pnlWork;
+  FExpenseButton.SetBounds(672, 528, 300, 36);
+  FExpenseButton.Caption := '영업비용 관리';
+  FExpenseButton.Font.Name := Font.Name;
+  FExpenseButton.Visible := False;
+  FExpenseButton.OnClick := btnExpenseClick;
   UpdateDatabaseStatus;
 end;
 
@@ -354,6 +367,33 @@ begin
     end;
   finally
     PayablesForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnExpenseClick(Sender: TObject);
+var
+  ExpenseForm: TfrmExpense;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('영업비용 관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  ExpenseForm := TfrmExpense.Create(Self);
+  try
+    try
+      ExpenseForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      ExpenseForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('영업비용 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/13_operating_expenses.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    ExpenseForm.Free;
   end;
 end;
 
