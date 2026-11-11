@@ -370,7 +370,7 @@ begin
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
-    Q.SQL.Text := 'SELECT MENU_ID, MENU_NAME, PRICE FROM MENU_ITEM ' +
+    Q.SQL.Text := 'SELECT MENU_ID, MENU_NAME, PRICE, SOLD_OUT_YN FROM MENU_ITEM ' +
       'WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:CATEGORY_ID AND ACTIVE_YN=''Y'' ' +
       'ORDER BY DISPLAY_ORDER, MENU_ID';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
@@ -389,6 +389,9 @@ begin
       Btn.Tag := Q.FieldByName('MENU_ID').AsInteger;
       Btn.Caption := Q.FieldByName('MENU_NAME').AsString + sLineBreak +
         FormatCurr('#,##0', Q.FieldByName('PRICE').AsCurrency) + '원';
+      Btn.Enabled := not SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y');
+      if not Btn.Enabled then
+        Btn.Caption := Btn.Caption + sLineBreak + '[품절]';
       Btn.OnClick := AddMenuClick;
       X := X + 192;
       if X + 180 > FMenuPanel.ClientWidth then
@@ -414,13 +417,18 @@ begin
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
-    Q.SQL.Text := 'SELECT MENU_NAME, PRICE FROM MENU_ITEM ' +
+    Q.SQL.Text := 'SELECT MENU_NAME, PRICE, SOLD_OUT_YN FROM MENU_ITEM ' +
       'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID AND ACTIVE_YN=''Y''';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.ParamByName('MENU_ID').AsInteger := MenuID;
     Q.Open;
     if not Q.IsEmpty then
     begin
+      if SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y') then
+      begin
+        MessageDlg('품절 처리된 메뉴입니다. 판매할 수 없습니다.', mtWarning, [mbOK], 0);
+        Exit;
+      end;
       if not SelectMenuOptions(MenuID, OptionText, OptionAmount) then Exit;
       AddCartItem(MenuID, Q.FieldByName('MENU_NAME').AsString,
         Q.FieldByName('PRICE').AsCurrency, OptionAmount, OptionText);
@@ -802,7 +810,11 @@ var
   OrderNo: string;
   OrderTotal, PaidAmount, RemainingAmount, ReceivedAmount: Currency;
   PaymentID: Int64;
-  Q: TFDQuery;
+  Q, QItems, QStock: TFDQuery;
+  MenuID: Integer;
+  MenuName: string;
+  ItemQty, StockBefore, StockAfter: Double;
+  StockMovementID: Int64;
   DialogForm: TForm;
   MethodGroup: TRadioGroup;
   AmountLabel, ReceivedLabel, ChangeLabel: TLabel;
@@ -932,8 +944,12 @@ begin
   dmDatabase.Connection.StartTransaction;
   try
     Q := TFDQuery.Create(nil);
+    QItems := TFDQuery.Create(nil);
+    QStock := TFDQuery.Create(nil);
     try
       Q.Connection := dmDatabase.Connection;
+      QItems.Connection := dmDatabase.Connection;
+      QStock.Connection := dmDatabase.Connection;
       Q.SQL.Text := 'SELECT ORDER_STATUS, TOTAL_AMOUNT FROM POS_ORDER ' +
         'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID WITH LOCK';
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
@@ -955,6 +971,67 @@ begin
         raise Exception.Create('이미 결제가 완료된 주문입니다.');
       if (MethodCode = 'CASH') and (ReceivedAmount < RemainingAmount) then
         raise Exception.Create('주문 금액이 변경되었습니다. 받은 현금이 결제 금액보다 적습니다. 다시 결제해 주세요.');
+
+      // Deduct managed menu stock only when the order is fully paid.
+      QItems.SQL.Text :=
+        'SELECT MENU_ID, MIN(MENU_NAME) AS MENU_NAME, SUM(QUANTITY) AS ITEM_QTY ' +
+        'FROM POS_ORDER_ITEM WHERE ORDER_ID=:ORDER_ID GROUP BY MENU_ID';
+      QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      QItems.Open;
+      while not QItems.Eof do
+      begin
+        MenuID := QItems.FieldByName('MENU_ID').AsInteger;
+        MenuName := QItems.FieldByName('MENU_NAME').AsString;
+        ItemQty := QItems.FieldByName('ITEM_QTY').AsFloat;
+
+        QStock.Close;
+        QStock.SQL.Text := 'SELECT STOCK_MANAGED_YN, STOCK_QTY FROM MENU_ITEM ' +
+          'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID WITH LOCK';
+        QStock.ParamByName('STORE_ID').AsInteger := FStoreID;
+        QStock.ParamByName('MENU_ID').AsInteger := MenuID;
+        QStock.Open;
+        if not QStock.IsEmpty and
+          SameText(QStock.FieldByName('STOCK_MANAGED_YN').AsString, 'Y') then
+        begin
+          StockBefore := QStock.FieldByName('STOCK_QTY').AsFloat;
+          if StockBefore < ItemQty then
+            raise Exception.CreateFmt('재고가 부족합니다. 메뉴: %s / 현재고: %s / 주문수량: %s',
+              [MenuName, FormatFloat('#,##0.###', StockBefore),
+               FormatFloat('#,##0.###', ItemQty)]);
+          StockAfter := StockBefore - ItemQty;
+          QStock.Close;
+
+          Q.SQL.Text := 'UPDATE MENU_ITEM SET STOCK_QTY=:STOCK_QTY ' +
+            'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID';
+          Q.ParamByName('STOCK_QTY').AsFloat := StockAfter;
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('MENU_ID').AsInteger := MenuID;
+          Q.ExecSQL;
+
+          StockMovementID := NextSequenceValue('GEN_POS_STOCK_MOVEMENT_ID');
+          Q.SQL.Text :=
+            'INSERT INTO POS_STOCK_MOVEMENT ' +
+            '(STOCK_MOVEMENT_ID, STORE_ID, MENU_ID, MOVEMENT_TYPE, QUANTITY, ' +
+            'STOCK_BEFORE, STOCK_AFTER, REASON_CODE, DESCRIPTION, ' +
+            'REFERENCE_TYPE, REFERENCE_ID, EMPLOYEE_ID) ' +
+            'VALUES (:ID, :STORE_ID, :MENU_ID, ''OUT'', :QTY, :BEFORE_QTY, ' +
+            ':AFTER_QTY, ''SALE'', :DESCRIPTION, ''ORDER'', :REFERENCE_ID, :EMPLOYEE_ID)';
+          Q.ParamByName('ID').AsLargeInt := StockMovementID;
+          Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+          Q.ParamByName('MENU_ID').AsInteger := MenuID;
+          Q.ParamByName('QTY').AsFloat := ItemQty;
+          Q.ParamByName('BEFORE_QTY').AsFloat := StockBefore;
+          Q.ParamByName('AFTER_QTY').AsFloat := StockAfter;
+          Q.ParamByName('DESCRIPTION').AsString := 'POS 판매 자동 차감 ' + OrderNo;
+          Q.ParamByName('REFERENCE_ID').AsLargeInt := OrderID;
+          Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+          Q.ExecSQL;
+        end
+        else
+          QStock.Close;
+        QItems.Next;
+      end;
+      QItems.Close;
 
       PaymentID := NextSequenceValue('GEN_POS_PAYMENT_ID');
       Q.SQL.Text := 'INSERT INTO POS_PAYMENT ' +
@@ -979,6 +1056,8 @@ begin
       Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
       Q.ExecSQL;
     finally
+      QStock.Free;
+      QItems.Free;
       Q.Free;
     end;
     dmDatabase.Connection.Commit;

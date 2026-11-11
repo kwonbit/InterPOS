@@ -31,7 +31,9 @@ type
   private
     FSession: TEmployeeSession;
     FShiftButton: TButton;
+    FInventoryButton: TButton;
     procedure UpdateDatabaseStatus;
+    procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
@@ -43,7 +45,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm;
 
 {$R *.dfm}
 
@@ -56,6 +58,9 @@ begin
   btnMenu.Visible := btnEmployee.Visible;
   btnReports.Visible := btnEmployee.Visible;
   if Assigned(FShiftButton) then FShiftButton.Visible := True;
+  if Assigned(FInventoryButton) then
+    FInventoryButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -84,10 +89,18 @@ begin
   btnReports.Caption := '매출관리 / 영업마감';
   FShiftButton := TButton.Create(Self);
   FShiftButton.Parent := pnlWork;
-  FShiftButton.SetBounds(672, 160, 300, 48);
+  FShiftButton.SetBounds(672, 224, 300, 48);
   FShiftButton.Caption := '영업 개점 / 마감 및 현금시재';
   FShiftButton.Font.Name := Font.Name;
   FShiftButton.OnClick := btnShiftClick;
+
+  FInventoryButton := TButton.Create(Self);
+  FInventoryButton.Parent := pnlWork;
+  FInventoryButton.SetBounds(672, 160, 300, 48);
+  FInventoryButton.Caption := '재고관리';
+  FInventoryButton.Font.Name := Font.Name;
+  FInventoryButton.Visible := False;
+  FInventoryButton.OnClick := btnInventoryClick;
   UpdateDatabaseStatus;
 end;
 
@@ -142,6 +155,33 @@ begin
       MessageDlg('POS 판매 화면을 열지 못했습니다: ' + E.Message +
         sLineBreak + 'database/08_operational_foundation.sql 적용 여부를 확인해 주세요.',
         mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMain.btnInventoryClick(Sender: TObject);
+var
+  InventoryForm: TfrmInventory;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('재고관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  InventoryForm := TfrmInventory.Create(Self);
+  try
+    try
+      InventoryForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      InventoryForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('재고관리 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/09_inventory_management.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    InventoryForm.Free;
   end;
 end;
 
