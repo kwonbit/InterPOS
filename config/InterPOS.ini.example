@@ -12,6 +12,9 @@ StoreId=1
 [Backup]
 GbakPath=C:\Program Files\Firebird\Firebird_5_0\gbak.exe
 BackupFolder=C:\InterPOS\backup
+ScheduleEnabled=False
+ScheduleTime=02:00
+RetentionDays=30
 
 [CashDrawer]
 Enabled=N
