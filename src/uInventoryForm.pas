@@ -425,9 +425,14 @@ begin
       if not InputQuery('재고 실사 조정', '실제 재고 수량을 입력하세요.', AmountText) then Exit;
     end;
 
-    if not TryStrToFloat(Trim(AmountText), Amount) or (Amount < 0) then
+    if not TryStrToFloat(Trim(AmountText), Amount) then
     begin
-      MessageDlg('수량을 0 이상의 숫자로 입력해 주세요.', mtWarning, [mbOK], 0);
+      MessageDlg('수량을 숫자로 입력해 주세요.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
+    if Amount < 0 then
+    begin
+      MessageDlg('수량은 0 이상이어야 합니다.', mtWarning, [mbOK], 0);
       Exit;
     end;
     if (TypeCode <> 'ADJUST') and (Amount <= 0) then
