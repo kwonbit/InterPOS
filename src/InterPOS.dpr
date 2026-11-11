@@ -20,6 +20,7 @@ uses
   uBackupForm in 'uBackupForm.pas',
   uSupplierForm in 'uSupplierForm.pas',
   uPurchaseForm in 'uPurchaseForm.pas',
+  uPayableForm in 'uPayableForm.pas',
   uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
