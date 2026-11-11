@@ -440,6 +440,7 @@ var
   MenuID: Integer;
   Qty, BeforeQty, AfterQty: Double;
   MovementID: Int64;
+  PaidAmount: Currency;
 begin
   dmDatabase.Connection.StartTransaction;
   try
