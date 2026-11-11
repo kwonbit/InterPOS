@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Classes, System.Math, System.UITypes,
   Data.DB, FireDAC.Comp.Client, FireDAC.Stan.Param,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.DBGrids,
-  Vcl.Grids, Vcl.Dialogs, Vcl.ComCtrls;
+  Vcl.Grids, Vcl.Dialogs, Vcl.ComCtrls, Vcl.Graphics;
 
 type
   TfrmPurchase = class(TForm)
@@ -172,7 +172,6 @@ begin
   FGrid.ReadOnly := True;
   FGrid.Options := FGrid.Options + [dgRowSelect, dgTitles, dgIndicator];
   FGrid.OnCellClick := GridCellClick;
-  FGrid.OnDblClick := GridCellClick;
 
   FDetailGrid := TStringGrid.Create(Self);
   FDetailGrid.Parent := Self;
