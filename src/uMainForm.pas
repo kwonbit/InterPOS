@@ -37,6 +37,7 @@ type
     FPurchaseButton: TButton;
     FPayablesButton: TButton;
     FExpenseButton: TButton;
+    FFinancialButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -45,6 +46,7 @@ type
     procedure btnPurchaseClick(Sender: TObject);
     procedure btnPayablesClick(Sender: TObject);
     procedure btnExpenseClick(Sender: TObject);
+    procedure btnFinancialClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -55,7 +57,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm;
 
 {$R *.dfm}
 
@@ -84,6 +86,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FExpenseButton) then
     FExpenseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FFinancialButton) then
+    FFinancialButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -165,6 +170,14 @@ begin
   FExpenseButton.Font.Name := Font.Name;
   FExpenseButton.Visible := False;
   FExpenseButton.OnClick := btnExpenseClick;
+
+  FFinancialButton := TButton.Create(Self);
+  FFinancialButton.Parent := pnlWork;
+  FFinancialButton.SetBounds(32, 232, 300, 48);
+  FFinancialButton.Caption := '기간별 수입 / 지출 현황';
+  FFinancialButton.Font.Name := Font.Name;
+  FFinancialButton.Visible := False;
+  FFinancialButton.OnClick := btnFinancialClick;
   UpdateDatabaseStatus;
 end;
 
@@ -394,6 +407,33 @@ begin
     end;
   finally
     ExpenseForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnFinancialClick(Sender: TObject);
+var
+  FinancialForm: TfrmFinancialSummary;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('수입·지출 현황 조회 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  FinancialForm := TfrmFinancialSummary.Create(Self);
+  try
+    try
+      FinancialForm.SetStoreID(dmDatabase.StoreID);
+      FinancialForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('수입·지출 현황 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/13_operating_expenses.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    FinancialForm.Free;
   end;
 end;
 
