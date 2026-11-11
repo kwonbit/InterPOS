@@ -435,7 +435,7 @@ end;
 procedure TfrmPurchase.CancelPurchase(APurchaseID: Int64);
 var
   Q, QItem: TFDQuery;
-  StatusText: string;
+  StatusText: UnicodeString;
   MenuID: Integer;
   Qty, BeforeQty, AfterQty: Double;
   MovementID: Int64;
@@ -454,7 +454,7 @@ begin
       Q.Close;
       if StatusText = 'CANCELLED' then
         raise Exception.Create('이미 취소된 구매입니다.');
-      if not (StatusText = 'DRAFT' or StatusText = 'RECEIVED') then
+      if (StatusText <> 'DRAFT') and (StatusText <> 'RECEIVED') then
         raise Exception.Create('취소할 수 없는 구매 상태입니다.');
 
       if StatusText = 'RECEIVED' then
