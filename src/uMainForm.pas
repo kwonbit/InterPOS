@@ -64,8 +64,7 @@ begin
     FInventoryButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FBackupButton) then
-    FBackupButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
-      SameText(FSession.RoleCode, 'MANAGER');
+    FBackupButton.Visible := SameText(FSession.RoleCode, 'OWNER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
