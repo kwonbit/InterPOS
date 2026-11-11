@@ -18,12 +18,14 @@ type
     FRefreshButton: TButton;
     FManageButton: TButton;
     FHistoryButton: TButton;
+    FSoldOutButton: TButton;
     procedure BuildUI;
     procedure RefreshData;
     procedure RefreshClick(Sender: TObject);
     procedure ManageClick(Sender: TObject);
     procedure MovementClick(Sender: TObject);
     procedure HistoryClick(Sender: TObject);
+    procedure SoldOutClick(Sender: TObject);
     procedure ShowHistory(AMenuID: Integer);
     function SelectedMenuID: Integer;
     function NextSequenceValue(const ASequenceName: string): Int64;
@@ -79,12 +81,18 @@ begin
   FStatusLabel.Caption := '재고관리 상품을 선택하세요.';
   FStatusLabel.Font.Name := Font.Name;
 
+  FSoldOutButton := TButton.Create(Self);
+  FSoldOutButton.Parent := Header;
+  FSoldOutButton.SetBounds(920, 18, 170, 42);
+  FSoldOutButton.Caption := '품절 / 판매 재개';
+  FSoldOutButton.OnClick := SoldOutClick;
+
   FGrid := TStringGrid.Create(Self);
   FGrid.Parent := Self;
   FGrid.Align := alClient;
   FGrid.FixedRows := 1;
   FGrid.FixedCols := 0;
-  FGrid.ColCount := 7;
+  FGrid.ColCount := 8;
   FGrid.RowCount := 2;
   FGrid.DefaultRowHeight := 30;
   FGrid.Options := FGrid.Options + [goRowSelect, goColSizing];
@@ -95,13 +103,15 @@ begin
   FGrid.Cells[4, 0] := '현재고';
   FGrid.Cells[5, 0] := '안전재고';
   FGrid.Cells[6, 0] := '재고상태';
+  FGrid.Cells[7, 0] := '판매상태';
   FGrid.ColWidths[0] := 0;
   FGrid.ColWidths[1] := 260;
   FGrid.ColWidths[2] := 180;
   FGrid.ColWidths[3] := 100;
   FGrid.ColWidths[4] := 130;
   FGrid.ColWidths[5] := 130;
-  FGrid.ColWidths[6] := 140;
+  FGrid.ColWidths[6] := 120;
+  FGrid.ColWidths[7] := 100;
 
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := Self;
@@ -136,15 +146,22 @@ begin
   B.Tag := 3;
   B.OnClick := MovementClick;
 
+  B := TButton.Create(Self);
+  B.Parent := ButtonPanel;
+  B.SetBounds(545, 12, 125, 42);
+  B.Caption := '재고 폐기';
+  B.Tag := 4;
+  B.OnClick := MovementClick;
+
   FHistoryButton := TButton.Create(Self);
   FHistoryButton.Parent := ButtonPanel;
-  FHistoryButton.SetBounds(551, 12, 125, 42);
+  FHistoryButton.SetBounds(680, 12, 125, 42);
   FHistoryButton.Caption := '재고 이력';
   FHistoryButton.OnClick := HistoryClick;
 
   FRefreshButton := TButton.Create(Self);
   FRefreshButton.Parent := ButtonPanel;
-  FRefreshButton.SetBounds(688, 12, 110, 42);
+  FRefreshButton.SetBounds(817, 12, 110, 42);
   FRefreshButton.Caption := '새로고침';
   FRefreshButton.OnClick := RefreshClick;
 
@@ -198,7 +215,7 @@ begin
     Q.Connection := dmDatabase.Connection;
     Q.SQL.Text :=
       'SELECT M.MENU_ID, M.MENU_NAME, C.CATEGORY_NAME, M.STOCK_MANAGED_YN, ' +
-      'M.STOCK_QTY, M.LOW_STOCK_QTY ' +
+      'M.STOCK_QTY, M.LOW_STOCK_QTY, M.SOLD_OUT_YN ' +
       'FROM MENU_ITEM M JOIN MENU_CATEGORY C ON C.CATEGORY_ID=M.CATEGORY_ID ' +
       'WHERE M.STORE_ID=:STORE_ID AND M.ACTIVE_YN=''Y'' ' +
       'ORDER BY C.DISPLAY_ORDER, M.DISPLAY_ORDER, M.MENU_NAME';
@@ -225,6 +242,8 @@ begin
         FGrid.Cells[6, R] := '재고 부족'
       else
         FGrid.Cells[6, R] := '정상';
+      FGrid.Cells[7, R] := IfThen(SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y'),
+        '품절', '판매중');
       Inc(R);
       Q.Next;
     end;
@@ -429,12 +448,19 @@ begin
       AmountText := '1';
       if not InputQuery('재고 출고', '출고 수량을 입력하세요.', AmountText) then Exit;
     end
-    else
+    else if B.Tag = 3 then
     begin
       TypeCode := 'ADJUST';
       Reason := 'STOCKTAKE';
       AmountText := '0';
       if not InputQuery('재고 실사 조정', '실제 재고 수량을 입력하세요.', AmountText) then Exit;
+    end
+    else
+    begin
+      TypeCode := 'OUT';
+      Reason := 'WASTE';
+      AmountText := '1';
+      if not InputQuery('재고 폐기', '폐기 수량을 입력하세요.', AmountText) then Exit;
     end;
 
     if not TryStrToFloat(Trim(AmountText), Amount) then
@@ -461,6 +487,64 @@ begin
     on E: Exception do
       MessageDlg('재고 처리 실패: ' + E.Message, mtError, [mbOK], 0);
   end;
+end;
+
+procedure TfrmInventory.SoldOutClick(Sender: TObject);
+var
+  MenuID: Integer;
+  Q: TFDQuery;
+  NewValue: string;
+  MenuName: string;
+begin
+  MenuID := SelectedMenuID;
+  if MenuID = 0 then
+  begin
+    MessageDlg('품절 상태를 변경할 메뉴를 선택해 주세요.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT MENU_NAME, SOLD_OUT_YN FROM MENU_ITEM ' +
+      'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('MENU_ID').AsInteger := MenuID;
+    Q.Open;
+    if Q.IsEmpty then
+    begin
+      MessageDlg('선택한 메뉴를 찾을 수 없습니다.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
+    MenuName := Q.FieldByName('MENU_NAME').AsString;
+    if SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y') then
+      NewValue := 'N'
+    else
+      NewValue := 'Y';
+    Q.Close;
+
+    if NewValue = 'Y' then
+    begin
+      if MessageDlg(MenuName + ' 메뉴를 품절 처리하시겠습니까?',
+        mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+    end
+    else
+    begin
+      if MessageDlg(MenuName + ' 메뉴의 판매를 재개하시겠습니까?',
+        mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+    end;
+
+    Q.SQL.Text := 'UPDATE MENU_ITEM SET SOLD_OUT_YN=:SOLD_OUT ' +
+      'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID';
+    Q.ParamByName('SOLD_OUT').AsString := NewValue;
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('MENU_ID').AsInteger := MenuID;
+    Q.ExecSQL;
+  finally
+    Q.Free;
+  end;
+
+  RefreshData;
 end;
 
 procedure TfrmInventory.HistoryClick(Sender: TObject);
