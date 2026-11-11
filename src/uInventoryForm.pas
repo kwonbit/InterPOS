@@ -812,14 +812,17 @@ begin
       'JOIN EMPLOYEE E ON E.EMPLOYEE_ID=M.EMPLOYEE_ID ' +
       'WHERE M.STORE_ID=:STORE_ID ' +
       'AND CAST(M.CREATED_AT AS DATE) BETWEEN :DATE_FROM AND :DATE_TO ' +
-      'AND (CHAR_LENGTH(:TYPE_CODE)=0 OR M.MOVEMENT_TYPE=:TYPE_CODE) ' +
-      'AND I.MENU_NAME CONTAINING :MENU_NAME ' +
-      'ORDER BY M.CREATED_AT DESC ROWS 1000';
+      'AND I.MENU_NAME CONTAINING :MENU_NAME ';
+    if TypeCode <> '' then
+      Q.SQL.Add('AND M.MOVEMENT_TYPE=:TYPE_CODE ');
+    Q.SQL.Add('ORDER BY M.CREATED_AT DESC ROWS 1000');
+
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.ParamByName('DATE_FROM').AsDate := FHistoryDateFrom.Date;
     Q.ParamByName('DATE_TO').AsDate := FHistoryDateTo.Date;
-    Q.ParamByName('TYPE_CODE').AsString := TypeCode;
     Q.ParamByName('MENU_NAME').AsString := Trim(FHistoryMenuName.Text);
+    if TypeCode <> '' then
+      Q.ParamByName('TYPE_CODE').AsString := TypeCode;
     Q.Open;
     Q.FetchAll;
 
