@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Math, System.UITypes,
+  System.SysUtils, System.Classes, System.Math, System.StrUtils, System.UITypes,
   FireDAC.Comp.Client, FireDAC.Stan.Param,
   Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Grids, Vcl.Dialogs;
@@ -279,7 +279,7 @@ begin
     ManagedText := IfThen(SameText(Managed, 'Y'), 'Y', 'N');
     if not InputQuery('재고관리 설정', '재고관리 사용 여부 (Y/N)', ManagedText) then Exit;
     ManagedText := UpperCase(Trim(ManagedText));
-    if not (ManagedText in ['Y', 'N']) then
+    if (ManagedText <> 'Y') and (ManagedText <> 'N') then
       raise Exception.Create('재고관리 사용 여부는 Y 또는 N으로 입력해 주세요.');
 
     LowText := FloatToStr(LowQty);
@@ -315,8 +315,8 @@ begin
   MenuID := SelectedMenuID;
   if MenuID = 0 then
     raise Exception.Create('재고를 변경할 메뉴를 선택해 주세요.');
-  if AQuantity <= 0 then
-    raise Exception.Create('수량은 0보다 커야 합니다.');
+  if (AQuantity < 0) or ((AMovementType <> 'ADJUST') and (AQuantity <= 0)) then
+    raise Exception.Create('입고/출고 수량은 0보다 커야 하며 실사 수량은 0 이상이어야 합니다.');
 
   dmDatabase.Connection.StartTransaction;
   try
