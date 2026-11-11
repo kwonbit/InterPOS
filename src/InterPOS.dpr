@@ -29,7 +29,7 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.Title := 'InterPOS';
-  Application.CreateForm(TdmDatabase, uDatabase.dmDatabase);
+  Application.CreateForm(TdmDatabase, dmDatabase);
 
   try
     uDatabase.dmDatabase.Connect;
