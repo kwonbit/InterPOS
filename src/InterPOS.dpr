@@ -18,6 +18,7 @@ uses
   uShiftForm in 'uShiftForm.pas',
   uInventoryForm in 'uInventoryForm.pas',
   uBackupForm in 'uBackupForm.pas',
+  uSupplierForm in 'uSupplierForm.pas',
   uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
