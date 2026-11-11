@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes,
   Data.DB, FireDAC.Comp.Client, FireDAC.Stan.Param,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.DBGrids, Vcl.Dialogs;
+  Vcl.DBGrids, Vcl.Dialogs, Vcl.Graphics;
 
 type
   TfrmSupplier = class(TForm)
