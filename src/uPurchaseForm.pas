@@ -346,6 +346,7 @@ var
   MenuID: Integer;
   Qty, BeforeQty, AfterQty: Double;
   MovementID: Int64;
+  PaidAmount: Currency;
 begin
   dmDatabase.Connection.StartTransaction;
   try
@@ -439,6 +440,7 @@ var
   MenuID: Integer;
   Qty, BeforeQty, AfterQty: Double;
   MovementID: Int64;
+  PaidAmount: Currency;
 begin
   dmDatabase.Connection.StartTransaction;
   try
@@ -459,6 +461,16 @@ begin
 
       if StatusText = 'RECEIVED' then
       begin
+        Q.SQL.Text := 'SELECT COALESCE(SUM(PAYMENT_AMOUNT), 0) AS PAID_AMOUNT ' +
+          'FROM POS_PURCHASE_PAYMENT WHERE STORE_ID=:STORE_ID AND PURCHASE_ID=:PURCHASE_ID';
+        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+        Q.ParamByName('PURCHASE_ID').AsLargeInt := APurchaseID;
+        Q.Open;
+        PaidAmount := Q.FieldByName('PAID_AMOUNT').AsCurrency;
+        Q.Close;
+        if PaidAmount > 0 then
+          raise Exception.Create('지급 내역이 등록된 구매는 취소할 수 없습니다. 지급 내역을 먼저 정산해야 합니다.');
+
         QItem := NewQuery;
         try
           QItem.SQL.Text := 'SELECT MENU_ID, SUM(QUANTITY) AS TOTAL_QTY ' +

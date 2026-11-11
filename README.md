@@ -18,7 +18,7 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 1. Firebird 5.0 Server를 설치합니다.
 2. 빈 데이터베이스에 `database/01_schema.sql`을 실행합니다.
 3. `database/02_employee_login_indexes.sql`부터 `database/07_sales_closing.sql`까지 순서대로 실행합니다.
-4. `database/08_operational_foundation.sql`, `database/09_inventory_management.sql`, `database/10_supplier_management.sql`, `database/11_purchase_management.sql`을 순서대로 한 번씩 실행합니다.
+4. `database/08_operational_foundation.sql`, `database/09_inventory_management.sql`, `database/10_supplier_management.sql`, `database/11_purchase_management.sql`, `database/12_supplier_payables.sql`을 순서대로 한 번씩 실행합니다.
 5. `config/InterPOS.ini.example`을 실행 파일 옆의 `InterPOS.ini`로 복사하고 DB 접속 정보와 `[POS] StoreId`, `[POS] TerminalId`를 입력합니다.
 6. Delphi 12에서 `src/InterPOS.dpr`을 엽니다.
 7. FireDAC Firebird 드라이버와 Firebird Client DLL 설치 여부를 확인합니다.
@@ -52,6 +52,7 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 기간/구분/메뉴명 조건별 전체 재고 이력 조회 및 CSV 내보내기
 - 거래처 등록/수정/검색 및 사용/중지 관리
 - 구매 등록, 거래처별 구매 내역 및 입고 확정/취소
+- 거래처별 입고 매입금액·지급액·미지급 잔액 조회 및 분할 지급 등록
 - 입고 확정 시 재고 자동 증가와 재고 이력 연결
 - 결제 완료 시 재고관리 메뉴 자동 차감 및 재고 부족 결제 차단
 - 매니저는 일반 직원 계정만 관리 가능
