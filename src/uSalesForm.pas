@@ -969,8 +969,12 @@ begin
       Q.ParamByName('CHANGE').AsCurrency := ReceivedAmount - RemainingAmount;
       Q.ExecSQL;
 
-      Q.SQL.Text := 'UPDATE POS_ORDER SET ORDER_STATUS=''PAID'' ' +
+      Q.SQL.Text := 'UPDATE POS_ORDER SET ORDER_STATUS=''PAID'', ' +
+        'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
+        'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
         'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
+      Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+      Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
       Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
       Q.ExecSQL;
