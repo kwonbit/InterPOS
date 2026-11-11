@@ -8,3 +8,11 @@ CharacterSet=UTF8
 [POS]
 TerminalId=1
 StoreId=1
+
+[CashDrawer]
+Enabled=N
+Port=COM1
+BaudRate=9600
+Pin=0
+PulseOn=25
+PulseOff=250
