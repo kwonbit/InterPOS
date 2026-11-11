@@ -22,12 +22,14 @@ type
     FIngredientCombo: TComboBox;
     FRecipeQtyEdit: TEdit;
     FSelectedIngredientID: Int64;
+    FSelectedRecipeID: Int64;
     procedure BuildUI;
     procedure RefreshIngredients;
     procedure RefreshMenus;
     procedure RefreshRecipes;
     procedure IngredientGridClick(Sender: TObject);
     procedure MenuChanged(Sender: TObject);
+    procedure RecipeGridClick(Sender: TObject);
     procedure ClearIngredient;
     procedure ClearIngredientClick(Sender: TObject);
     procedure SaveIngredientClick(Sender: TObject);
@@ -36,6 +38,7 @@ type
     procedure DeleteRecipeClick(Sender: TObject);
     function NextID(const ASequenceName: string): Int64;
     function ComboID(ACombo: TComboBox): Int64;
+    function ComboIDAt(ACombo: TComboBox; AIndex: Integer): Int64;
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetContext(AStoreID, AEmployeeID: Integer);
@@ -153,7 +156,7 @@ begin
   B := TButton.Create(Self);
   B.Parent := EntryPanel;
   B.SetBounds(96, 94, 110, 34);
-  B.Caption := '신규 등록';
+  B.Caption := '등록 / 수정';
   B.OnClick := SaveIngredientClick;
   B := TButton.Create(Self);
   B.Parent := EntryPanel;
@@ -228,7 +231,7 @@ begin
   B := TButton.Create(Self);
   B.Parent := RecipeEntry;
   B.SetBounds(110, 48, 130, 34);
-  B.Caption := '레시피 추가';
+  B.Caption := '레시피 등록 / 수정';
   B.OnClick := AddRecipeClick;
   B := TButton.Create(Self);
   B.Parent := RecipeEntry;
@@ -253,6 +256,7 @@ begin
   FRecipeGrid.ColWidths[1] := 250;
   FRecipeGrid.ColWidths[2] := 120;
   FRecipeGrid.ColWidths[3] := 80;
+  FRecipeGrid.OnClick := RecipeGridClick;
 
   B := TButton.Create(Self);
   B.Parent := Self;
@@ -274,6 +278,18 @@ begin
   finally
     Q.Free;
   end;
+end;
+
+function TfrmIngredientRecipe.ComboIDAt(ACombo: TComboBox; AIndex: Integer): Int64;
+var
+  S: string;
+  P: Integer;
+begin
+  Result := 0;
+  if (AIndex < 0) or (AIndex >= ACombo.Items.Count) then Exit;
+  S := ACombo.Items[AIndex];
+  P := Pos(' | ', S);
+  if P > 1 then TryStrToInt64(Copy(S, 1, P - 1), Result);
 end;
 
 function TfrmIngredientRecipe.ComboID(ACombo: TComboBox): Int64;
@@ -353,6 +369,7 @@ var
   R: Integer;
   MenuID: Int64;
 begin
+  FSelectedRecipeID := 0;
   FRecipeGrid.RowCount := 2;
   FRecipeGrid.Cells[1,1] := '';
   MenuID := ComboID(FMenuCombo);
@@ -489,6 +506,37 @@ begin
   RefreshRecipes;
 end;
 
+procedure TfrmIngredientRecipe.RecipeGridClick(Sender: TObject);
+var
+  ID: Int64;
+  Q: TFDQuery;
+  IngredientID: Int64;
+  I: Integer;
+begin
+  if (FRecipeGrid.Row < 1) or
+    not TryStrToInt64(FRecipeGrid.Cells[0,FRecipeGrid.Row], ID) then Exit;
+  FSelectedRecipeID := ID;
+  Q := NewIngredientQuery;
+  try
+    Q.SQL.Text := 'SELECT INGREDIENT_ID, QUANTITY FROM POS_MENU_RECIPE ' +
+      'WHERE STORE_ID=:STORE_ID AND RECIPE_ID=:ID';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('ID').AsLargeInt := ID;
+    Q.Open;
+    if Q.IsEmpty then Exit;
+    IngredientID := Q.FieldByName('INGREDIENT_ID').AsLargeInt;
+    FRecipeQtyEdit.Text := FormatFloat('0.####', Q.FieldByName('QUANTITY').AsFloat);
+    for I := 0 to FIngredientCombo.Items.Count - 1 do
+      if ComboIDAt(FIngredientCombo, I) = IngredientID then
+      begin
+        FIngredientCombo.ItemIndex := I;
+        Break;
+      end;
+  finally
+    Q.Free;
+  end;
+end;
+
 procedure TfrmIngredientRecipe.AddRecipeClick(Sender: TObject);
 var
   Q: TFDQuery;
@@ -502,22 +550,32 @@ begin
     if IngredientID <= 0 then raise Exception.Create('원재료를 선택해 주세요.');
     if not TryStrToFloat(Trim(FRecipeQtyEdit.Text), Qty) or (Qty <= 0) then
       raise Exception.Create('사용량은 0보다 큰 숫자로 입력해 주세요.');
-    RecipeID := NextID('GEN_POS_MENU_RECIPE_ID');
     Q := NewIngredientQuery;
     try
-      Q.SQL.Text := 'INSERT INTO POS_MENU_RECIPE (RECIPE_ID, STORE_ID, MENU_ID, ' +
-        'INGREDIENT_ID, QUANTITY, CREATED_BY) VALUES (:ID, :STORE_ID, :MENU_ID, ' +
-        ':INGREDIENT_ID, :QTY, :EMPLOYEE_ID)';
-      Q.ParamByName('ID').AsLargeInt := RecipeID;
+      if FSelectedRecipeID > 0 then
+      begin
+        Q.SQL.Text := 'UPDATE POS_MENU_RECIPE SET INGREDIENT_ID=:INGREDIENT_ID, ' +
+          'QUANTITY=:QTY WHERE STORE_ID=:STORE_ID AND RECIPE_ID=:ID AND MENU_ID=:MENU_ID';
+        Q.ParamByName('ID').AsLargeInt := FSelectedRecipeID;
+      end
+      else
+      begin
+        RecipeID := NextID('GEN_POS_MENU_RECIPE_ID');
+        Q.SQL.Text := 'INSERT INTO POS_MENU_RECIPE (RECIPE_ID, STORE_ID, MENU_ID, ' +
+          'INGREDIENT_ID, QUANTITY, CREATED_BY) VALUES (:ID, :STORE_ID, :MENU_ID, ' +
+          ':INGREDIENT_ID, :QTY, :EMPLOYEE_ID)';
+        Q.ParamByName('ID').AsLargeInt := RecipeID;
+        Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+      end;
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
       Q.ParamByName('MENU_ID').AsLargeInt := MenuID;
       Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
       Q.ParamByName('QTY').AsFloat := Qty;
-      Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
       Q.ExecSQL;
     finally
       Q.Free;
     end;
+    FSelectedRecipeID := 0;
     FRecipeQtyEdit.Clear;
     RefreshRecipes;
   except
