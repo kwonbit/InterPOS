@@ -39,6 +39,7 @@ type
     FExpenseButton: TButton;
     FFinancialButton: TButton;
     FIngredientRecipeButton: TButton;
+    FIngredientPurchaseButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -49,6 +50,7 @@ type
     procedure btnExpenseClick(Sender: TObject);
     procedure btnFinancialClick(Sender: TObject);
     procedure btnIngredientsClick(Sender: TObject);
+    procedure btnIngredientPurchaseClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -59,7 +61,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm, uIngredientPurchaseForm;
 
 {$R *.dfm}
 
@@ -94,6 +96,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FIngredientRecipeButton) then
     FIngredientRecipeButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FIngredientPurchaseButton) then
+    FIngredientPurchaseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -191,6 +196,14 @@ begin
   FIngredientRecipeButton.Font.Name := Font.Name;
   FIngredientRecipeButton.Visible := False;
   FIngredientRecipeButton.OnClick := btnIngredientsClick;
+
+  FIngredientPurchaseButton := TButton.Create(Self);
+  FIngredientPurchaseButton.Parent := pnlWork;
+  FIngredientPurchaseButton.SetBounds(32, 360, 300, 48);
+  FIngredientPurchaseButton.Caption := '원재료 구매 등록';
+  FIngredientPurchaseButton.Font.Name := Font.Name;
+  FIngredientPurchaseButton.Visible := False;
+  FIngredientPurchaseButton.OnClick := btnIngredientPurchaseClick;
   UpdateDatabaseStatus;
 end;
 
@@ -361,7 +374,7 @@ begin
     except
       on E: Exception do
         MessageDlg('구매관리 화면을 열지 못했습니다: ' + E.Message +
-          sLineBreak + 'database/11_purchase_management.sql 적용 여부를 확인해 주세요.',
+          sLineBreak + 'database/15_ingredient_purchasing.sql 적용 여부를 확인해 주세요.',
           mtError, [mbOK], 0);
     end;
   finally
@@ -420,6 +433,38 @@ begin
     end;
   finally
     ExpenseForm.Free;
+  end;
+end;
+
+
+procedure TfrmMain.btnIngredientPurchaseClick(Sender: TObject);
+var
+  IngredientPurchaseForm: TfrmIngredientPurchase;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('원재료 구매 등록 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  IngredientPurchaseForm := TfrmIngredientPurchase.Create(Self);
+  try
+    try
+      IngredientPurchaseForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      if IngredientPurchaseForm.ShowModal = mrOk then
+      begin
+        MessageDlg('구매관리 / 입고처리에서 해당 구매를 선택하고 입고 확정해 주세요.',
+          mtInformation, [mbOK], 0);
+      end;
+    except
+      on E: Exception do
+        MessageDlg('원재료 구매 등록 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/15_ingredient_purchasing.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    IngredientPurchaseForm.Free;
   end;
 end;
 
