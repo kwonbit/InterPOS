@@ -308,8 +308,8 @@ begin
   P := Pos(' | ', S);
   NameText := Copy(S, P + 3, MaxInt);
   UnitText := '';
-  P := LastDelimiter('()', NameText);
-  if P > 0 then
+  P := LastDelimiter('(', NameText);
+  if (P > 0) and (Length(NameText) > P) and (NameText[Length(NameText)] = ')') then
   begin
     UnitText := Copy(NameText, P + 1, Length(NameText) - P - 1);
     NameText := Trim(Copy(NameText, 1, P - 1));
