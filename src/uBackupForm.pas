@@ -166,7 +166,6 @@ var
   LogHandle: THandle;
   SA: TSecurityAttributes;
   ExitCode: DWORD;
-  WaitResult: DWORD;
 begin
   Result := False;
   AOutput := '';
@@ -200,11 +199,7 @@ begin
         CREATE_NO_WINDOW, nil, PChar(ExtractFilePath(FGbakPath)), SI, PI) then
         RaiseLastOSError;
       try
-        repeat
-          WaitResult := WaitForSingleObject(PI.hProcess, 100);
-          if WaitResult = WAIT_TIMEOUT then Application.ProcessMessages;
-        until WaitResult <> WAIT_TIMEOUT;
-        if WaitResult <> WAIT_OBJECT_0 then
+        if WaitForSingleObject(PI.hProcess, INFINITE) <> WAIT_OBJECT_0 then
           RaiseLastOSError;
         if not GetExitCodeProcess(PI.hProcess, ExitCode) then
           RaiseLastOSError;
