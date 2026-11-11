@@ -34,11 +34,13 @@ type
     FInventoryButton: TButton;
     FBackupButton: TButton;
     FSupplierButton: TButton;
+    FPurchaseButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
     procedure btnBackupClick(Sender: TObject);
     procedure btnSupplierClick(Sender: TObject);
+    procedure btnPurchaseClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -49,7 +51,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm;
 
 {$R *.dfm}
 
@@ -69,6 +71,9 @@ begin
     FBackupButton.Visible := SameText(FSession.RoleCode, 'OWNER');
   if Assigned(FSupplierButton) then
     FSupplierButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FPurchaseButton) then
+    FPurchaseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -126,6 +131,14 @@ begin
   FSupplierButton.Font.Name := Font.Name;
   FSupplierButton.Visible := False;
   FSupplierButton.OnClick := btnSupplierClick;
+
+  FPurchaseButton := TButton.Create(Self);
+  FPurchaseButton.Parent := pnlWork;
+  FPurchaseButton.SetBounds(672, 416, 300, 48);
+  FPurchaseButton.Caption := '구매관리 / 입고처리';
+  FPurchaseButton.Font.Name := Font.Name;
+  FPurchaseButton.Visible := False;
+  FPurchaseButton.OnClick := btnPurchaseClick;
   UpdateDatabaseStatus;
 end;
 
@@ -274,6 +287,33 @@ begin
     end;
   finally
     SupplierForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnPurchaseClick(Sender: TObject);
+var
+  PurchaseForm: TfrmPurchase;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('구매관리 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  PurchaseForm := TfrmPurchase.Create(Self);
+  try
+    try
+      PurchaseForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      PurchaseForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('구매관리 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/11_purchase_management.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    PurchaseForm.Free;
   end;
 end;
 
