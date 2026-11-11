@@ -14,6 +14,7 @@ type
   private
     FConnection: TFDConnection;
     FStoreID: Integer;
+    FTerminalID: Integer;
     procedure LoadConfiguration;
   public
     constructor Create(AOwner: TComponent); override;
@@ -23,6 +24,7 @@ type
     function IsConnected: Boolean;
     property Connection: TFDConnection read FConnection;
     property StoreID: Integer read FStoreID;
+    property TerminalID: Integer read FTerminalID;
   end;
 
 var
@@ -52,6 +54,7 @@ var
   IniPath: string;
 begin
   FStoreID := 1;
+  FTerminalID := 1;
   FConnection.Params.Clear;
   FConnection.Params.DriverID := 'FB';
   FConnection.Params.Database := 'C:\InterPOS\data\INTERPOS.FDB';
@@ -81,6 +84,7 @@ begin
     FConnection.Params.Values['Port'] :=
       Ini.ReadString('Database', 'Port', '3050');
     FStoreID := Ini.ReadInteger('POS', 'StoreId', 1);
+    FTerminalID := Ini.ReadInteger('POS', 'TerminalId', 1);
   finally
     Ini.Free;
   end;
