@@ -272,7 +272,10 @@ begin
     Q.ParamByName('MENU_ID').AsInteger := MenuID;
     Q.Open;
     if Q.IsEmpty then
-      raise Exception.Create('선택한 메뉴를 찾을 수 없습니다.');
+    begin
+      MessageDlg('선택한 메뉴를 찾을 수 없습니다.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
     Managed := Q.FieldByName('STOCK_MANAGED_YN').AsString;
     LowQty := Q.FieldByName('LOW_STOCK_QTY').AsFloat;
     Q.Close;
@@ -281,16 +284,25 @@ begin
     if not InputQuery('재고관리 설정', '재고관리 사용 여부 (Y/N)', ManagedText) then Exit;
     ManagedText := UpperCase(Trim(ManagedText));
     if (ManagedText <> 'Y') and (ManagedText <> 'N') then
-      raise Exception.Create('재고관리 사용 여부는 Y 또는 N으로 입력해 주세요.');
+    begin
+      MessageDlg('재고관리 사용 여부는 Y 또는 N으로 입력해 주세요.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
 
     LowText := FloatToStr(LowQty);
     if ManagedText = 'Y' then
     begin
       if not InputQuery('안전재고 설정', '안전재고 수량을 입력하세요.', LowText) then Exit;
       if not TryStrToFloat(Trim(LowText), LowQty) then
-        raise Exception.Create('안전재고 수량을 숫자로 입력해 주세요.');
+      begin
+        MessageDlg('안전재고 수량을 숫자로 입력해 주세요.', mtWarning, [mbOK], 0);
+        Exit;
+      end;
       if LowQty < 0 then
-        raise Exception.Create('안전재고 수량은 0 이상이어야 합니다.');
+      begin
+        MessageDlg('안전재고 수량은 0 이상이어야 합니다.', mtWarning, [mbOK], 0);
+        Exit;
+      end;
     end;
 
     Q.SQL.Text := 'UPDATE MENU_ITEM SET STOCK_MANAGED_YN=:MANAGED, ' +
