@@ -29,6 +29,7 @@ type
     procedure IngredientGridClick(Sender: TObject);
     procedure MenuChanged(Sender: TObject);
     procedure ClearIngredient;
+    procedure ClearIngredientClick(Sender: TObject);
     procedure SaveIngredientClick(Sender: TObject);
     procedure DisableIngredientClick(Sender: TObject);
     procedure AddRecipeClick(Sender: TObject);
@@ -158,7 +159,7 @@ begin
   B.Parent := EntryPanel;
   B.SetBounds(216, 94, 110, 34);
   B.Caption := '입력 초기화';
-  B.OnClick := procedure(Sender: TObject) begin ClearIngredient; end;
+  B.OnClick := ClearIngredientClick;
   B := TButton.Create(Self);
   B.Parent := EntryPanel;
   B.SetBounds(336, 94, 110, 34);
@@ -391,6 +392,11 @@ begin
   FNameEdit.Text := FIngredientGrid.Cells[1,FIngredientGrid.Row];
   FUnitCombo.ItemIndex := FUnitCombo.Items.IndexOf(FIngredientGrid.Cells[2,FIngredientGrid.Row]);
   FLowStockEdit.Text := FIngredientGrid.Cells[4,FIngredientGrid.Row];
+end;
+
+procedure TfrmIngredientRecipe.ClearIngredientClick(Sender: TObject);
+begin
+  ClearIngredient;
 end;
 
 procedure TfrmIngredientRecipe.ClearIngredient;
