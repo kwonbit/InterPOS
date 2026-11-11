@@ -1,4 +1,4 @@
-unit uSalesReportForm;
+﻿unit uSalesReportForm;
 
 interface
 
