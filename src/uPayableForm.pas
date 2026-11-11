@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Classes, System.UITypes, System.Math,
   Data.DB, FireDAC.Comp.Client,
   Vcl.Forms, Vcl.Controls, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.DBGrids,
-  Vcl.Dialogs, Vcl.Graphics;
+  Vcl.Dialogs, Vcl.Graphics, Vcl.Grids;
 
 type
   TfrmPayables = class(TForm)
@@ -227,7 +227,7 @@ end;
 procedure TfrmPayables.LoadHistory;
 var
   Q: TFDQuery;
-  R: Integer;
+  R, HistoryCount: Integer;
 begin
   FHistory.RowCount := 2;
   FHistory.Cells[0,1] := '';
@@ -243,7 +243,9 @@ begin
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.ParamByName('PURCHASE_ID').AsLargeInt := SelectedPurchaseID;
     Q.Open;
-    FHistory.RowCount := Max(2, Q.RecordCount + 1);
+    HistoryCount := Q.RecordCount + 1;
+    if HistoryCount < 2 then HistoryCount := 2;
+    FHistory.RowCount := HistoryCount;
     R := 1;
     while not Q.Eof do
     begin
@@ -359,7 +361,10 @@ begin
   SMethod := 'BANK';
   if not InputQuery('지급 수단', '지급 수단을 입력하세요 (CASH/BANK/CARD/OTHER).', SMethod) then Exit;
   SMethod := UpperCase(Trim(SMethod));
-  if not (SMethod = 'CASH' or SMethod = 'BANK' or SMethod = 'CARD' or SMethod = 'OTHER') then
+  if not SameText(SMethod, 'CASH') and
+     not SameText(SMethod, 'BANK') and
+     not SameText(SMethod, 'CARD') and
+     not SameText(SMethod, 'OTHER') then
   begin
     MessageDlg('지급 수단은 CASH, BANK, CARD, OTHER 중 하나여야 합니다.', mtWarning, [mbOK], 0);
     Exit;
