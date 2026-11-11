@@ -243,7 +243,8 @@ begin
   FQuery.Close;
   FQuery.SQL.Text :=
     'SELECT P.PURCHASE_ID, P.PURCHASE_DATE, S.SUPPLIER_NAME, ' +
-    'P.PURCHASE_STATUS, P.TOTAL_AMOUNT, E.EMPLOYEE_NAME, P.CREATED_AT ' +
+    'IIF(P.PURCHASE_STATUS=''DRAFT'', ''작성중'', IIF(P.PURCHASE_STATUS=''RECEIVED'', ''입고완료'', ''취소'')) AS STATUS_TEXT, ' +
+    'P.TOTAL_AMOUNT, E.EMPLOYEE_NAME, P.CREATED_AT ' +
     'FROM POS_PURCHASE P JOIN POS_SUPPLIER S ON S.SUPPLIER_ID=P.SUPPLIER_ID ' +
     'JOIN EMPLOYEE E ON E.EMPLOYEE_ID=P.CREATED_BY ' +
     'WHERE P.STORE_ID=:STORE_ID ';
@@ -263,7 +264,7 @@ begin
   FQuery.FieldByName('PURCHASE_ID').Visible := False;
   FQuery.FieldByName('PURCHASE_DATE').DisplayLabel := '구매일자';
   FQuery.FieldByName('SUPPLIER_NAME').DisplayLabel := '거래처';
-  FQuery.FieldByName('PURCHASE_STATUS').DisplayLabel := '상태';
+  FQuery.FieldByName('STATUS_TEXT').DisplayLabel := '상태';
   FQuery.FieldByName('TOTAL_AMOUNT').DisplayLabel := '총 구매금액';
   FQuery.FieldByName('EMPLOYEE_NAME').DisplayLabel := '등록 직원';
   FQuery.FieldByName('CREATED_AT').DisplayLabel := '등록일시';
@@ -744,7 +745,8 @@ begin
     if (R = 2) and (FGrid.Cells[1,1] = '') then R := 1;
     FGrid.RowCount := R + 1;
     FGrid.Cells[0,R] := IntToStr(D.MenuID);
-    FGrid.Cells[1,R] := D.FMenu.Items[D.FMenu.ItemIndex];
+    FGrid.Cells[1,R] := Copy(D.FMenu.Items[D.FMenu.ItemIndex],
+      Pos(' | ', D.FMenu.Items[D.FMenu.ItemIndex]) + 3, MaxInt);
     FGrid.Cells[2,R] := FloatToStr(D.Quantity);
     FGrid.Cells[3,R] := CurrToStr(D.UnitCost);
     FGrid.Cells[4,R] := FormatCurr('0.00', D.Quantity * D.UnitCost);
@@ -783,7 +785,7 @@ end;
 function TfrmPurchaseEditor.SavePurchase: Int64;
 var
   Q: TFDQuery;
-  I, MenuID: Integer;
+  I, MenuID, ItemCount: Integer;
   Qty: Double;
   UnitCost, LineAmount, Total: Currency;
   PurchaseItemID: Int64;
@@ -791,12 +793,15 @@ begin
   if SelectedSupplierID <= 0 then
     raise Exception.Create('사용 중인 거래처를 선택해 주세요.');
   Total := 0;
+  ItemCount := 0;
   for I := 1 to FGrid.RowCount - 1 do
   begin
-    if not TryStrToCurr(FGrid.Cells[4,I], LineAmount) then Continue;
-    Total := Total + LineAmount;
+    if not TryStrToInt(FGrid.Cells[0,I], MenuID) then Continue;
+    Inc(ItemCount);
+    if TryStrToCurr(FGrid.Cells[4,I], LineAmount) then
+      Total := Total + LineAmount;
   end;
-  if Total <= 0 then raise Exception.Create('구매 품목을 한 개 이상 등록해 주세요.');
+  if ItemCount = 0 then raise Exception.Create('구매 품목을 한 개 이상 등록해 주세요.');
 
   dmDatabase.Connection.StartTransaction;
   try
