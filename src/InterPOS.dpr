@@ -19,7 +19,6 @@ uses
   uInventoryForm in 'uInventoryForm.pas',
   uBackupForm in 'uBackupForm.pas',
   uScheduledBackup in 'uScheduledBackup.pas',
-  uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
@@ -27,6 +26,7 @@ uses
 
 var
   LoginForm: TfrmLogin;
+  BackupExitCode: Integer;
 
 begin
   Application.Initialize;
