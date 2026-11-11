@@ -141,13 +141,16 @@ begin
     'SELECT SUPPLIER_ID, SUPPLIER_NAME AS 거래처명, BUSINESS_NO AS 사업자번호, ' +
     'CONTACT_NAME AS 담당자, TEL AS 전화번호, EMAIL AS 이메일, ' +
     'ADDRESS AS 주소, IIF(ACTIVE_YN=''Y'', ''사용'', ''중지'') AS 상태 ' +
-    'FROM POS_SUPPLIER WHERE STORE_ID=:STORE_ID ' +
-    'AND (:KEYWORD='''' OR SUPPLIER_NAME CONTAINING :KEYWORD ' +
-    'OR COALESCE(BUSINESS_NO, '''') CONTAINING :KEYWORD ' +
-    'OR COALESCE(TEL, '''') CONTAINING :KEYWORD) ' +
-    'ORDER BY ACTIVE_YN DESC, SUPPLIER_NAME';
+    'FROM POS_SUPPLIER WHERE STORE_ID=:STORE_ID ';
+  if Trim(FSearch.Text) <> '' then
+    FQuery.SQL.Add(
+      'AND (SUPPLIER_NAME CONTAINING :KEYWORD OR ' +
+      'COALESCE(BUSINESS_NO, '''') CONTAINING :KEYWORD OR ' +
+      'COALESCE(TEL, '''') CONTAINING :KEYWORD) ');
+  FQuery.SQL.Add('ORDER BY ACTIVE_YN DESC, SUPPLIER_NAME');
   FQuery.ParamByName('STORE_ID').AsInteger := FStoreID;
-  FQuery.ParamByName('KEYWORD').AsString := Trim(FSearch.Text);
+  if Trim(FSearch.Text) <> '' then
+    FQuery.ParamByName('KEYWORD').AsString := Trim(FSearch.Text);
   FQuery.Open;
   FQuery.FieldByName('SUPPLIER_ID').Visible := False;
   FQuery.FieldByName('거래처명').DisplayLabel := '거래처명';
