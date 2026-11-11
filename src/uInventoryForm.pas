@@ -54,7 +54,7 @@ end;
 
 procedure TfrmInventory.BuildUI;
 var
-  Header, ButtonPanel: TPanel;
+  Header, FilterPanel, ButtonPanel: TPanel;
   L: TLabel;
   B: TButton;
 begin
@@ -92,17 +92,26 @@ begin
   FSoldOutButton.Caption := '품절 / 판매 재개';
   FSoldOutButton.OnClick := SoldOutClick;
 
-  FLowStockOnly := TCheckBox.Create(Self);
-  FLowStockOnly.Parent := Header;
-  FLowStockOnly.SetBounds(440, 25, 180, 28);
-  FLowStockOnly.Caption := '재고 부족 상품만 보기';
-  FLowStockOnly.OnClick := LowStockClick;
-
   FExportButton := TButton.Create(Self);
   FExportButton.Parent := Header;
   FExportButton.SetBounds(770, 18, 130, 42);
   FExportButton.Caption := 'CSV 내보내기';
   FExportButton.OnClick := ExportClick;
+
+  FilterPanel := TPanel.Create(Self);
+  FilterPanel.Parent := Self;
+  FilterPanel.Align := alTop;
+  FilterPanel.Height := 44;
+  FilterPanel.BevelOuter := bvNone;
+
+  FLowStockOnly := TCheckBox.Create(Self);
+  FLowStockOnly.Parent := FilterPanel;
+  FLowStockOnly.SetBounds(16, 8, 240, 28);
+  FLowStockOnly.Caption := '재고 부족 상품만 보기';
+  FLowStockOnly.Font.Name := Font.Name;
+  FLowStockOnly.Visible := True;
+  FLowStockOnly.OnClick := LowStockClick;
+  FLowStockOnly.BringToFront;
 
   FGrid := TStringGrid.Create(Self);
   FGrid.Parent := Self;
