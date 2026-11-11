@@ -160,7 +160,7 @@ begin
 
   FExpenseButton := TButton.Create(Self);
   FExpenseButton.Parent := pnlWork;
-  FExpenseButton.SetBounds(672, 536, 300, 40);
+  FExpenseButton.SetBounds(672, 528, 300, 36);
   FExpenseButton.Caption := '영업비용 관리';
   FExpenseButton.Font.Name := Font.Name;
   FExpenseButton.Visible := False;
