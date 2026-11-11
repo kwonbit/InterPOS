@@ -204,16 +204,19 @@ begin
         WriteBackupLog(Folder, '이미 다른 예약 백업이 실행 중이므로 이번 작업을 건너뜁니다.');
         Exit(3);
       end;
-      if WaitResult <> WAIT_OBJECT_0 then
+      if (WaitResult <> WAIT_OBJECT_0) and
+        (WaitResult <> WAIT_ABANDONED) then
         RaiseLastOSError;
       try
         if not dmDatabase.IsConnected then
           dmDatabase.Connect;
         Target := TPath.Combine(Folder,
-          'INTERPOS_' + FormatDateTime('yyyymmdd_hhnnss', Now) + '.fbk');
+          'INTERPOS_' + FormatDateTime('yyyymmdd_hhnnss_zzz', Now) + '.fbk');
         WriteBackupLog(Folder, '예약 백업 시작: ' + Target);
         if not RunGbak(Target, Gbak, Output) then
           raise Exception.Create('gbak 백업 실패.' + sLineBreak + Output);
+        if (not FileExists(Target)) or (TFile.GetSize(Target) = 0) then
+          raise Exception.Create('gbak 실행은 성공했지만 백업 파일이 생성되지 않았거나 비어 있습니다.');
         WriteBackupLog(Folder, '백업 성공: ' + Target);
         if Output <> '' then
           WriteBackupLog(Folder, Trim(Output));
