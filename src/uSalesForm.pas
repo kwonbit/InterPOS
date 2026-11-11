@@ -370,7 +370,7 @@ begin
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
-    Q.SQL.Text := 'SELECT MENU_ID, MENU_NAME, PRICE FROM MENU_ITEM ' +
+    Q.SQL.Text := 'SELECT MENU_ID, MENU_NAME, PRICE, SOLD_OUT_YN FROM MENU_ITEM ' +
       'WHERE STORE_ID=:STORE_ID AND CATEGORY_ID=:CATEGORY_ID AND ACTIVE_YN=''Y'' ' +
       'ORDER BY DISPLAY_ORDER, MENU_ID';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
@@ -389,6 +389,9 @@ begin
       Btn.Tag := Q.FieldByName('MENU_ID').AsInteger;
       Btn.Caption := Q.FieldByName('MENU_NAME').AsString + sLineBreak +
         FormatCurr('#,##0', Q.FieldByName('PRICE').AsCurrency) + '원';
+      Btn.Enabled := not SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y');
+      if not Btn.Enabled then
+        Btn.Caption := Btn.Caption + sLineBreak + '[품절]';
       Btn.OnClick := AddMenuClick;
       X := X + 192;
       if X + 180 > FMenuPanel.ClientWidth then
@@ -414,13 +417,18 @@ begin
   Q := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
-    Q.SQL.Text := 'SELECT MENU_NAME, PRICE FROM MENU_ITEM ' +
+    Q.SQL.Text := 'SELECT MENU_NAME, PRICE, SOLD_OUT_YN FROM MENU_ITEM ' +
       'WHERE STORE_ID=:STORE_ID AND MENU_ID=:MENU_ID AND ACTIVE_YN=''Y''';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.ParamByName('MENU_ID').AsInteger := MenuID;
     Q.Open;
     if not Q.IsEmpty then
     begin
+      if SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y') then
+      begin
+        MessageDlg('품절 처리된 메뉴입니다. 판매할 수 없습니다.', mtWarning, [mbOK], 0);
+        Exit;
+      end;
       if not SelectMenuOptions(MenuID, OptionText, OptionAmount) then Exit;
       AddCartItem(MenuID, Q.FieldByName('MENU_NAME').AsString,
         Q.FieldByName('PRICE').AsCurrency, OptionAmount, OptionText);
