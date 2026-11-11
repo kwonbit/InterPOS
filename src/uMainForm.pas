@@ -32,9 +32,11 @@ type
     FSession: TEmployeeSession;
     FShiftButton: TButton;
     FInventoryButton: TButton;
+    FBackupButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
+    procedure btnBackupClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -45,7 +47,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm;
 
 {$R *.dfm}
 
@@ -61,6 +63,8 @@ begin
   if Assigned(FInventoryButton) then
     FInventoryButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FBackupButton) then
+    FBackupButton.Visible := SameText(FSession.RoleCode, 'OWNER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -101,6 +105,14 @@ begin
   FInventoryButton.Font.Name := Font.Name;
   FInventoryButton.Visible := False;
   FInventoryButton.OnClick := btnInventoryClick;
+
+  FBackupButton := TButton.Create(Self);
+  FBackupButton.Parent := pnlWork;
+  FBackupButton.SetBounds(672, 288, 300, 48);
+  FBackupButton.Caption := '데이터 백업 / 복구 검증';
+  FBackupButton.Font.Name := Font.Name;
+  FBackupButton.Visible := False;
+  FBackupButton.OnClick := btnBackupClick;
   UpdateDatabaseStatus;
 end;
 
@@ -203,6 +215,25 @@ begin
     end;
   finally
     ShiftForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnBackupClick(Sender: TObject);
+var
+  BackupForm: TfrmBackup;
+begin
+  if not SameText(FSession.RoleCode, 'OWNER') then
+  begin
+    MessageDlg('데이터 백업 및 복구 검증은 점주 권한이 필요합니다.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  BackupForm := TfrmBackup.Create(Self);
+  try
+    BackupForm.ShowModal;
+  finally
+    BackupForm.Free;
   end;
 end;
 
