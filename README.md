@@ -56,6 +56,6 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 매일 예약 백업, 보관 기간 자동 정리 및 백업 실행 로그
 - 현금 결제 시 설정된 ESC/POS 돈통 자동 열기
 
-로그인 및 직원 권한은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md), 기초정보 관리는 [docs/MASTER_DATA.md](docs/MASTER_DATA.md), POS 판매는 [docs/POS_SALES.md](docs/POS_SALES.md), 영업 개점/마감 및 현금시재는 [docs/SHIFT_MANAGEMENT.md](docs/SHIFT_MANAGEMENT.md), 재고관리는 [docs/INVENTORY_MANAGEMENT.md](docs/INVENTORY_MANAGEMENT.md), 다중 단말 구성은 [docs/MULTI_TERMINAL.md](docs/MULTI_TERMINAL.md), 데이터 백업/복구 및 예약 백업은 [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md), 돈통 설정은 [docs/CASH_DRAWER.md](docs/CASH_DRAWER.md)를 참고하세요. 매출 보고서 CSV 내보내기는 [docs/SALES_REPORT_EXPORT.md](docs/SALES_REPORT_EXPORT.md)를 참고하세요.
+로그인 및 직원 권한은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md), 기초정보 관리는 [docs/MASTER_DATA.md](docs/MASTER_DATA.md), POS 판매는 [docs/POS_SALES.md](docs/POS_SALES.md), 영업 개점/마감 및 현금시재는 [docs/SHIFT_MANAGEMENT.md](docs/SHIFT_MANAGEMENT.md), 재고관리는 [docs/INVENTORY_MANAGEMENT.md](docs/INVENTORY_MANAGEMENT.md) 및 [docs/INVENTORY_ALERT_EXPORT.md](docs/INVENTORY_ALERT_EXPORT.md), 다중 단말 구성은 [docs/MULTI_TERMINAL.md](docs/MULTI_TERMINAL.md), 데이터 백업/복구 및 예약 백업은 [docs/BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md), 돈통 설정은 [docs/CASH_DRAWER.md](docs/CASH_DRAWER.md)를 참고하세요. 매출 보고서 CSV 내보내기는 [docs/SALES_REPORT_EXPORT.md](docs/SALES_REPORT_EXPORT.md)를 참고하세요.
 
 현재 버전은 개발 초기 단계입니다. 이 단계는 Delphi 12에서 컴파일/실행 검증이 필요하며, 실제 매장 운영 전에는 POS 판매, 결제, 프린터, 백업/복구 및 전체 업무 흐름에 대한 추가 구현과 테스트가 필요합니다.

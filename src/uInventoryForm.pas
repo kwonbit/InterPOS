@@ -20,6 +20,8 @@ type
     FManageButton: TButton;
     FHistoryButton: TButton;
     FSoldOutButton: TButton;
+    FLowStockOnly: TCheckBox;
+    FExportButton: TButton;
     procedure BuildUI;
     procedure RefreshData;
     procedure RefreshClick(Sender: TObject);
@@ -27,6 +29,8 @@ type
     procedure MovementClick(Sender: TObject);
     procedure HistoryClick(Sender: TObject);
     procedure SoldOutClick(Sender: TObject);
+    procedure LowStockClick(Sender: TObject);
+    procedure ExportClick(Sender: TObject);
     procedure ShowHistory(AMenuID: Integer);
     function SelectedMenuID: Integer;
     function NextSequenceValue(const ASequenceName: string): Int64;
@@ -50,7 +54,7 @@ end;
 
 procedure TfrmInventory.BuildUI;
 var
-  Header, ButtonPanel: TPanel;
+  Header, FilterPanel, ButtonPanel: TPanel;
   L: TLabel;
   B: TButton;
 begin
@@ -87,6 +91,27 @@ begin
   FSoldOutButton.SetBounds(920, 18, 170, 42);
   FSoldOutButton.Caption := '품절 / 판매 재개';
   FSoldOutButton.OnClick := SoldOutClick;
+
+  FExportButton := TButton.Create(Self);
+  FExportButton.Parent := Header;
+  FExportButton.SetBounds(770, 18, 130, 42);
+  FExportButton.Caption := 'CSV 내보내기';
+  FExportButton.OnClick := ExportClick;
+
+  FilterPanel := TPanel.Create(Self);
+  FilterPanel.Parent := Self;
+  FilterPanel.Align := alTop;
+  FilterPanel.Height := 44;
+  FilterPanel.BevelOuter := bvNone;
+
+  FLowStockOnly := TCheckBox.Create(Self);
+  FLowStockOnly.Parent := FilterPanel;
+  FLowStockOnly.SetBounds(16, 8, 240, 28);
+  FLowStockOnly.Caption := '재고 부족 상품만 보기';
+  FLowStockOnly.Font.Name := Font.Name;
+  FLowStockOnly.Visible := True;
+  FLowStockOnly.OnClick := LowStockClick;
+  FLowStockOnly.BringToFront;
 
   FGrid := TStringGrid.Create(Self);
   FGrid.Parent := Self;
@@ -219,8 +244,11 @@ begin
       'M.STOCK_QTY, M.LOW_STOCK_QTY, M.SOLD_OUT_YN ' +
       'FROM MENU_ITEM M JOIN MENU_CATEGORY C ON C.CATEGORY_ID=M.CATEGORY_ID ' +
       'WHERE M.STORE_ID=:STORE_ID AND M.ACTIVE_YN=''Y'' ' +
+      'AND (:LOW_ONLY=''N'' OR (M.STOCK_MANAGED_YN=''Y'' AND ' +
+      'M.LOW_STOCK_QTY>0 AND M.STOCK_QTY<=M.LOW_STOCK_QTY)) ' +
       'ORDER BY C.DISPLAY_ORDER, M.DISPLAY_ORDER, M.MENU_NAME';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('LOW_ONLY').AsString := IfThen(FLowStockOnly.Checked, 'Y', 'N');
     Q.Open;
     Q.FetchAll;
 
@@ -487,6 +515,70 @@ begin
   except
     on E: Exception do
       MessageDlg('재고 처리 실패: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmInventory.LowStockClick(Sender: TObject);
+begin
+  try
+    RefreshData;
+  except
+    on E: Exception do
+      MessageDlg('재고 부족 상품 조회 실패: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmInventory.ExportClick(Sender: TObject);
+var
+  SaveDialog: TSaveDialog;
+  Lines: TStringList;
+  R, C: Integer;
+  FileName: string;
+  function CsvField(const AValue: string): string;
+  begin
+    Result := '"' + StringReplace(AValue, '"', '""', [rfReplaceAll]) + '"';
+  end;
+begin
+  SaveDialog := TSaveDialog.Create(Self);
+  try
+    SaveDialog.Title := '재고 현황 CSV 저장';
+    SaveDialog.Filter := 'CSV 파일 (*.csv)|*.csv';
+    SaveDialog.DefaultExt := 'csv';
+    SaveDialog.FileName := 'InterPOS_Inventory_' +
+      FormatDateTime('yyyymmdd_hhnnss', Now) + '.csv';
+    SaveDialog.Options := SaveDialog.Options + [ofPathMustExist, ofOverwritePrompt];
+    if not SaveDialog.Execute then Exit;
+
+    FileName := SaveDialog.FileName;
+    if ExtractFileExt(FileName) = '' then
+      FileName := FileName + '.csv';
+
+    Lines := TStringList.Create;
+    try
+      Lines.Add(CsvField('메뉴번호') + ',' + CsvField('메뉴명') + ',' +
+        CsvField('분류') + ',' + CsvField('재고관리') + ',' +
+        CsvField('현재고') + ',' + CsvField('안전재고') + ',' +
+        CsvField('재고상태') + ',' + CsvField('판매상태'));
+      for R := 1 to FGrid.RowCount - 1 do
+      begin
+        if Trim(FGrid.Cells[1, R]) = '' then Continue;
+        Lines.Add('');
+        for C := 0 to 7 do
+        begin
+          if C > 0 then Lines[Lines.Count - 1] :=
+            Lines[Lines.Count - 1] + ',';
+          Lines[Lines.Count - 1] := Lines[Lines.Count - 1] +
+            CsvField(FGrid.Cells[C, R]);
+        end;
+      end;
+      Lines.SaveToFile(FileName, TEncoding.UTF8);
+    finally
+      Lines.Free;
+    end;
+    MessageDlg('재고 현황을 CSV로 저장했습니다.' + sLineBreak + FileName,
+      mtInformation, [mbOK], 0);
+  finally
+    SaveDialog.Free;
   end;
 end;
 
