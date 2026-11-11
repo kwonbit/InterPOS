@@ -1107,6 +1107,17 @@ begin
     Q := TFDQuery.Create(nil);
     try
       Q.Connection := dmDatabase.Connection;
+      // Serialize order creation for this table across all POS terminals.
+      // Locking the table row also protects the 'no open order exists' case.
+      Q.SQL.Text := 'SELECT TABLE_ID FROM POS_TABLE ' +
+        'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID WITH LOCK';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+      Q.Open;
+      if Q.IsEmpty then
+        raise Exception.Create('선택한 테이블을 찾을 수 없거나 다른 매장에 속해 있습니다.');
+      Q.Close;
+
       Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID, ORDER_NO, TOTAL_AMOUNT FROM POS_ORDER ' +
         'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
         'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
