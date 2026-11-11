@@ -22,6 +22,7 @@ uses
   uPurchaseForm in 'uPurchaseForm.pas',
   uPayableForm in 'uPayableForm.pas',
   uExpenseForm in 'uExpenseForm.pas' {frmExpense},
+  uFinancialSummaryForm in 'uFinancialSummaryForm.pas' {frmFinancialSummary},
   uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
