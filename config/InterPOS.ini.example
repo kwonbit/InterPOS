@@ -8,3 +8,7 @@ CharacterSet=UTF8
 [POS]
 TerminalId=1
 StoreId=1
+
+[Backup]
+GbakPath=C:\\Program Files\\Firebird\\Firebird_5_0\\gbak.exe
+BackupFolder=C:\\InterPOS\\backup
