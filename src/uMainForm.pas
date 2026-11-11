@@ -109,32 +109,39 @@ var
   SalesForm: TfrmSales;
   ShiftForm: TfrmShiftManagement;
 begin
-  ShiftForm := TfrmShiftManagement.Create(Self);
   try
-    ShiftForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
-      FSession.EmployeeID);
+    ShiftForm := TfrmShiftManagement.Create(Self);
+    try
+      ShiftForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
+        FSession.EmployeeID);
+      if not TfrmShiftManagement.HasOpenShift(dmDatabase.Connection,
+        dmDatabase.StoreID, dmDatabase.TerminalID) then
+        ShiftForm.ShowModal;
+    finally
+      ShiftForm.Free;
+    end;
+
     if not TfrmShiftManagement.HasOpenShift(dmDatabase.Connection,
       dmDatabase.StoreID, dmDatabase.TerminalID) then
-      ShiftForm.ShowModal;
-  finally
-    ShiftForm.Free;
-  end;
+    begin
+      MessageDlg('POS 판매를 시작하려면 먼저 영업 개점을 해주세요.',
+        mtWarning, [mbOK], 0);
+      Exit;
+    end;
 
-  if not TfrmShiftManagement.HasOpenShift(dmDatabase.Connection,
-    dmDatabase.StoreID, dmDatabase.TerminalID) then
-  begin
-    MessageDlg('POS 판매를 시작하려면 먼저 영업 개점을 해주세요.',
-      mtWarning, [mbOK], 0);
-    Exit;
-  end;
-
-  SalesForm := TfrmSales.Create(Self);
-  try
-    SalesForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
-      FSession.EmployeeID);
-    SalesForm.ShowModal;
-  finally
-    SalesForm.Free;
+    SalesForm := TfrmSales.Create(Self);
+    try
+      SalesForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
+        FSession.EmployeeID);
+      SalesForm.ShowModal;
+    finally
+      SalesForm.Free;
+    end;
+  except
+    on E: Exception do
+      MessageDlg('POS 판매 화면을 열지 못했습니다: ' + E.Message +
+        sLineBreak + 'database/08_operational_foundation.sql 적용 여부를 확인해 주세요.',
+        mtError, [mbOK], 0);
   end;
 end;
 
