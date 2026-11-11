@@ -178,7 +178,7 @@ begin
 
   FSupplierGrid := TStringGrid.Create(Self);
   FSupplierGrid.Parent := SupplierPanel;
-  FSupplierGrid.Align := alClient;
+  FSupplierGrid.Align := alNone;
   FSupplierGrid.SetBounds(12, 36, 1138, 120);
   FSupplierGrid.Anchors := [akLeft, akTop, akRight, akBottom];
   FSupplierGrid.FixedRows := 1;
