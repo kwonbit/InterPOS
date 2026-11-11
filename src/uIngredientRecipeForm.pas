@@ -201,8 +201,9 @@ begin
 
   RecipeEntry := TPanel.Create(Self);
   RecipeEntry.Parent := RightPanel;
-  RecipeEntry.Align := alTop;
+  RecipeEntry.Align := alNone;
   RecipeEntry.SetBounds(0, 50, 650, 94);
+  RecipeEntry.Anchors := [akLeft, akTop, akRight];
   RecipeEntry.Height := 94;
   RecipeEntry.BevelOuter := bvNone;
 
