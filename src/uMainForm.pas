@@ -30,7 +30,9 @@ type
     procedure btnEmployeeClick(Sender: TObject);
   private
     FSession: TEmployeeSession;
+    FShiftButton: TButton;
     procedure UpdateDatabaseStatus;
+    procedure btnShiftClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -41,7 +43,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm;
 
 {$R *.dfm}
 
@@ -53,6 +55,7 @@ begin
   btnTable.Visible := btnEmployee.Visible;
   btnMenu.Visible := btnEmployee.Visible;
   btnReports.Visible := btnEmployee.Visible;
+  if Assigned(FShiftButton) then FShiftButton.Visible := True;
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
       RoleDisplayName(FSession.RoleCode) + ')';
@@ -79,6 +82,12 @@ begin
   btnKitchen.Caption := '주방 주문현황';
   btnReports.Font.Name := Font.Name;
   btnReports.Caption := '매출관리 / 영업마감';
+  FShiftButton := TButton.Create(Self);
+  FShiftButton.Parent := pnlWork;
+  FShiftButton.SetBounds(672, 160, 300, 48);
+  FShiftButton.Caption := '영업 개점 / 마감 및 현금시재';
+  FShiftButton.Font.Name := Font.Name;
+  FShiftButton.OnClick := btnShiftClick;
   UpdateDatabaseStatus;
 end;
 
@@ -98,13 +107,62 @@ end;
 procedure TfrmMain.btnSalesClick(Sender: TObject);
 var
   SalesForm: TfrmSales;
+  ShiftForm: TfrmShiftManagement;
 begin
-  SalesForm := TfrmSales.Create(Self);
   try
-    SalesForm.SetStoreID(dmDatabase.StoreID);
-    SalesForm.ShowModal;
+    ShiftForm := TfrmShiftManagement.Create(Self);
+    try
+      ShiftForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
+        FSession.EmployeeID);
+      if not TfrmShiftManagement.HasOpenShift(dmDatabase.Connection,
+        dmDatabase.StoreID, dmDatabase.TerminalID) then
+        ShiftForm.ShowModal;
+    finally
+      ShiftForm.Free;
+    end;
+
+    if not TfrmShiftManagement.HasOpenShift(dmDatabase.Connection,
+      dmDatabase.StoreID, dmDatabase.TerminalID) then
+    begin
+      MessageDlg('POS 판매를 시작하려면 먼저 영업 개점을 해주세요.',
+        mtWarning, [mbOK], 0);
+      Exit;
+    end;
+
+    SalesForm := TfrmSales.Create(Self);
+    try
+      SalesForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
+        FSession.EmployeeID);
+      SalesForm.ShowModal;
+    finally
+      SalesForm.Free;
+    end;
+  except
+    on E: Exception do
+      MessageDlg('POS 판매 화면을 열지 못했습니다: ' + E.Message +
+        sLineBreak + 'database/08_operational_foundation.sql 적용 여부를 확인해 주세요.',
+        mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMain.btnShiftClick(Sender: TObject);
+var
+  ShiftForm: TfrmShiftManagement;
+begin
+  ShiftForm := TfrmShiftManagement.Create(Self);
+  try
+    try
+      ShiftForm.SetContext(dmDatabase.StoreID, dmDatabase.TerminalID,
+        FSession.EmployeeID);
+      ShiftForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('영업 개점/마감 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/08_operational_foundation.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
   finally
-    SalesForm.Free;
+    ShiftForm.Free;
   end;
 end;
 

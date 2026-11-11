@@ -16,14 +16,15 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 
 ## 시작하기
 1. Firebird 5.0 Server를 설치합니다.
-2. `database/01_schema.sql`을 실행해 데이터베이스 스키마를 생성합니다.
-3. `database/02_employee_login_indexes.sql`을 실행합니다.
-4. `database/03_master_data.sql`을 실행합니다.
-5. `database/04_pos_sales.sql`을 실행합니다.
-6. `config/InterPOS.ini.example`을 실행 파일 옆의 `InterPOS.ini`로 복사하고 DB 접속 정보와 `[POS] StoreId`를 입력합니다.
-7. Delphi 12에서 `src/InterPOS.dpr`을 엽니다.
-8. FireDAC Firebird 드라이버와 Firebird Client DLL 설치 여부를 확인합니다.
-9. 최초 실행 시 점주 계정을 등록하고 로그인합니다.
+2. 빈 데이터베이스에 `database/01_schema.sql`을 실행합니다.
+3. `database/02_employee_login_indexes.sql`부터 `database/07_sales_closing.sql`까지 순서대로 실행합니다.
+4. `database/08_operational_foundation.sql`을 한 번 실행합니다.
+5. `config/InterPOS.ini.example`을 실행 파일 옆의 `InterPOS.ini`로 복사하고 DB 접속 정보와 `[POS] StoreId`, `[POS] TerminalId`를 입력합니다.
+6. Delphi 12에서 `src/InterPOS.dpr`을 엽니다.
+7. FireDAC Firebird 드라이버와 Firebird Client DLL 설치 여부를 확인합니다.
+8. 최초 실행 시 점주 계정을 등록하고 로그인합니다.
+
+기존 DB에는 이미 적용한 migration을 다시 실행하지 말고, 미적용된 다음 스크립트만 실행합니다. `01_schema.sql`은 빈 DB 최초 생성에만 사용합니다.
 
 ## 구현된 기능
 - 최초 실행 시 매장 및 점주 계정 등록
@@ -40,8 +41,13 @@ Delphi 기반 음식점 Windows POS 프로젝트입니다. OKPOS와 유사한 �
 - 테이블 진행 주문의 현금/카드 전액 결제 처리
 - 결제 금액 및 결제 수단을 POS_PAYMENT에 저장
 - 현금 결제 시 받은 금액과 거스름돈 계산
+- POS 단말별 영업 개점 및 준비금 등록
+- 영업 중 현금 입금/출금 내역 관리
+- 현금 결제액과 입출금을 반영한 예상 시재 계산
+- 미결제 주문이 남아 있으면 영업마감 차단
+- 실제 시재 입력, 차액 계산 및 단말별 마감 이력 조회
 - 매니저는 일반 직원 계정만 관리 가능
 
-로그인 및 직원 권한의 상세 내용은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)를 참고하세요. 기초정보 관리의 상세 내용은 [docs/MASTER_DATA.md](docs/MASTER_DATA.md)를 참고하세요. POS 판매의 상세 내용은 [docs/POS_SALES.md](docs/POS_SALES.md)를 참고하세요.
+로그인 및 직원 권한은 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md), 기초정보 관리는 [docs/MASTER_DATA.md](docs/MASTER_DATA.md), POS 판매는 [docs/POS_SALES.md](docs/POS_SALES.md), 영업 개점/마감 및 현금시재는 [docs/SHIFT_MANAGEMENT.md](docs/SHIFT_MANAGEMENT.md)를 참고하세요.
 
 현재 버전은 개발 초기 단계입니다. 이 단계는 Delphi 12에서 컴파일/실행 검증이 필요하며, 실제 매장 운영 전에는 POS 판매, 결제, 프린터, 백업/복구 및 전체 업무 흐름에 대한 추가 구현과 테스트가 필요합니다.

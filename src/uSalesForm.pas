@@ -29,6 +29,8 @@ type
     procedure FormCreate(Sender: TObject);
   private
     FStoreID: Integer;
+    FTerminalID: Integer;
+    FEmployeeID: Integer;
     FCart: array of TCartItem;
     FTableCombo: TComboBox;
     FCategoryPanel: TScrollBox;
@@ -65,6 +67,7 @@ type
       out AOptionAmount: Currency): Boolean;
   public
     procedure SetStoreID(AStoreID: Integer);
+    procedure SetContext(AStoreID, ATerminalID, AEmployeeID: Integer);
   end;
 
 implementation
@@ -239,6 +242,13 @@ begin
   FStoreID := AStoreID;
   LoadTables;
   LoadCategories;
+end;
+
+procedure TfrmSales.SetContext(AStoreID, ATerminalID, AEmployeeID: Integer);
+begin
+  FTerminalID := ATerminalID;
+  FEmployeeID := AEmployeeID;
+  SetStoreID(AStoreID);
 end;
 
 procedure TfrmSales.LoadTables;
@@ -948,16 +958,23 @@ begin
 
       PaymentID := NextSequenceValue('GEN_POS_PAYMENT_ID');
       Q.SQL.Text := 'INSERT INTO POS_PAYMENT ' +
-        '(PAYMENT_ID, ORDER_ID, PAYMENT_METHOD, PAYMENT_AMOUNT) ' +
-        'VALUES (:ID, :ORDER_ID, :METHOD, :AMOUNT)';
+        '(PAYMENT_ID, ORDER_ID, PAYMENT_METHOD, PAYMENT_AMOUNT, ' +
+        'RECEIVED_AMOUNT, CHANGE_AMOUNT, PAYMENT_STATUS) ' +
+        'VALUES (:ID, :ORDER_ID, :METHOD, :AMOUNT, :RECEIVED, :CHANGE, ''APPROVED'')';
       Q.ParamByName('ID').AsLargeInt := PaymentID;
       Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
       Q.ParamByName('METHOD').AsString := MethodCode;
       Q.ParamByName('AMOUNT').AsCurrency := RemainingAmount;
+      Q.ParamByName('RECEIVED').AsCurrency := ReceivedAmount;
+      Q.ParamByName('CHANGE').AsCurrency := ReceivedAmount - RemainingAmount;
       Q.ExecSQL;
 
-      Q.SQL.Text := 'UPDATE POS_ORDER SET ORDER_STATUS=''PAID'' ' +
+      Q.SQL.Text := 'UPDATE POS_ORDER SET ORDER_STATUS=''PAID'', ' +
+        'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
+        'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
         'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
+      Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+      Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
       Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
       Q.ExecSQL;
@@ -1033,13 +1050,17 @@ begin
         OrderNo := FormatDateTime('yyyymmddhhnnss', Now) + '-' +
           FormatFloat('000000', OrderID);
         Q.SQL.Text := 'INSERT INTO POS_ORDER ' +
-          '(ORDER_ID, STORE_ID, TABLE_ID, ORDER_NO, ORDER_TYPE, ORDER_STATUS, TOTAL_AMOUNT) ' +
-          'VALUES (:ORDER_ID, :STORE_ID, :TABLE_ID, :ORDER_NO, ''DINE_IN'', ''OPEN'', :TOTAL)';
+          '(ORDER_ID, STORE_ID, TABLE_ID, ORDER_NO, ORDER_TYPE, ORDER_STATUS, TOTAL_AMOUNT, ' +
+          'EMPLOYEE_ID, TERMINAL_ID, UPDATED_AT) ' +
+          'VALUES (:ORDER_ID, :STORE_ID, :TABLE_ID, :ORDER_NO, ''DINE_IN'', ''OPEN'', :TOTAL, ' +
+          ':EMPLOYEE_ID, :TERMINAL_ID, CURRENT_TIMESTAMP)';
         Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
         Q.ParamByName('STORE_ID').AsInteger := FStoreID;
         Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
         Q.ParamByName('ORDER_NO').AsString := OrderNo;
         Q.ParamByName('TOTAL').AsCurrency := Total;
+        Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+        Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
         Q.ExecSQL;
       end;
 
@@ -1074,9 +1095,13 @@ begin
 
       if IsExistingOrder then
       begin
-        Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL ' +
+        Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL, ' +
+          'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
+          'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
           'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
         Q.ParamByName('TOTAL').AsCurrency := ExistingTotal + Total;
+        Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+        Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
         Q.ParamByName('STORE_ID').AsInteger := FStoreID;
         Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
         Q.ExecSQL;

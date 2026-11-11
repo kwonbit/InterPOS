@@ -14,6 +14,7 @@ uses
   uKitchenPrinter in 'uKitchenPrinter.pas',
   uKitchenDisplayForm in 'uKitchenDisplayForm.pas',
   uSalesReportForm in 'uSalesReportForm.pas',
+  uShiftForm in 'uShiftForm.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
