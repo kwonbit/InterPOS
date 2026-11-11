@@ -3,7 +3,7 @@
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Classes, System.IOUtils,
+  Winapi.Windows, System.SysUtils, System.UITypes, System.Classes, System.IOUtils,
   System.IniFiles, Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
   Vcl.ExtCtrls,
   Vcl.Dialogs;
@@ -18,6 +18,10 @@ type
     FBackupButton: TButton;
     FVerifyButton: TButton;
     FCloseButton: TButton;
+    FScheduleButton: TButton;
+    FScheduleCheck: TCheckBox;
+    FScheduleTime: TEdit;
+    FRetentionDays: TEdit;
     procedure BuildUI;
     procedure LoadSettings;
     function RunGbak(const AArguments: string; out AOutput: string): Boolean;
@@ -27,6 +31,7 @@ type
     function BackupFileName: string;
     procedure BackupClick(Sender: TObject);
     procedure VerifyClick(Sender: TObject);
+    procedure SaveScheduleClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
   end;
@@ -34,7 +39,7 @@ type
 implementation
 
 uses
-  uDatabase;
+  uDatabase, uScheduledBackup;
 
 constructor TfrmBackup.Create(AOwner: TComponent);
 begin
@@ -46,7 +51,7 @@ end;
 procedure TfrmBackup.BuildUI;
 var
   Header, Buttons: TPanel;
-  L: TLabel;
+  L, TimeLabel, RetentionLabel: TLabel;
 begin
   Caption := '데이터 백업 및 복구 검증';
   Font.Name := '맑은 고딕';
@@ -57,7 +62,7 @@ begin
   Header := TPanel.Create(Self);
   Header.Parent := Self;
   Header.Align := alTop;
-  Header.Height := 86;
+  Header.Height := 138;
   Header.BevelOuter := bvNone;
 
   L := TLabel.Create(Self);
@@ -73,6 +78,31 @@ begin
   FInfo.Left := 16;
   FInfo.Top := 43;
   FInfo.Caption := '설정 확인 중...';
+
+  FScheduleCheck := TCheckBox.Create(Self);
+  FScheduleCheck.Parent := Header;
+  FScheduleCheck.SetBounds(16, 76, 170, 24);
+  FScheduleCheck.Caption := '매일 자동 백업 사용';
+
+  TimeLabel := TLabel.Create(Self);
+  TimeLabel.Parent := Header;
+  TimeLabel.SetBounds(205, 80, 76, 20);
+  TimeLabel.Caption := '예약 시간';
+
+  FScheduleTime := TEdit.Create(Self);
+  FScheduleTime.Parent := Header;
+  FScheduleTime.SetBounds(278, 75, 70, 25);
+  FScheduleTime.Text := '02:00';
+
+  RetentionLabel := TLabel.Create(Self);
+  RetentionLabel.Parent := Header;
+  RetentionLabel.SetBounds(370, 80, 88, 20);
+  RetentionLabel.Caption := '보관 기간(일)';
+
+  FRetentionDays := TEdit.Create(Self);
+  FRetentionDays.Parent := Header;
+  FRetentionDays.SetBounds(462, 75, 55, 25);
+  FRetentionDays.Text := '30';
 
   FLog := TMemo.Create(Self);
   FLog.Parent := Self;
@@ -100,6 +130,12 @@ begin
   FVerifyButton.Caption := '백업 복구 검증';
   FVerifyButton.OnClick := VerifyClick;
 
+  FScheduleButton := TButton.Create(Self);
+  FScheduleButton.Parent := Buttons;
+  FScheduleButton.SetBounds(430, 12, 210, 42);
+  FScheduleButton.Caption := '예약 백업 설정 저장';
+  FScheduleButton.OnClick := SaveScheduleClick;
+
   FCloseButton := TButton.Create(Self);
   FCloseButton.Parent := Buttons;
   FCloseButton.SetBounds(748, 12, 120, 42);
@@ -121,6 +157,9 @@ begin
     try
       FGbakPath := Ini.ReadString('Backup', 'GbakPath', FGbakPath);
       FBackupFolder := Ini.ReadString('Backup', 'BackupFolder', FBackupFolder);
+      FScheduleCheck.Checked := Ini.ReadBool('Backup', 'ScheduleEnabled', False);
+      FScheduleTime.Text := Ini.ReadString('Backup', 'ScheduleTime', '02:00');
+      FRetentionDays.Text := Ini.ReadString('Backup', 'RetentionDays', '30');
     finally
       Ini.Free;
     end;
@@ -130,6 +169,7 @@ begin
   FLog.Lines.Add('gbak 경로: ' + FGbakPath);
   FLog.Lines.Add('백업 폴더: ' + FBackupFolder);
   FLog.Lines.Add('복구 검증은 운영 DB를 덮어쓰지 않고 별도 테스트 DB를 생성합니다.');
+  FLog.Lines.Add('예약 백업은 Windows 작업 스케줄러에서 매일 실행되며 InterPOS가 종료되어도 동작합니다.');
 end;
 
 function TfrmBackup.Quote(const S: string): string;
@@ -249,6 +289,55 @@ begin
     begin
       FLog.Lines.Add('오류: ' + E.Message);
       MessageDlg('백업 실패: ' + E.Message, mtError, [mbOK], 0);
+    end;
+  end;
+end;
+
+procedure TfrmBackup.SaveScheduleClick(Sender: TObject);
+var
+  Ini: TIniFile;
+  Days: Integer;
+begin
+  if not TryStrToInt(Trim(FRetentionDays.Text), Days) or (Days < 1) or
+    (Days > 3650) then
+  begin
+    MessageDlg('백업 보관 기간은 1일부터 3650일 사이로 입력해 주세요.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    Ini := TIniFile.Create(ChangeFileExt(ParamStr(0), '.ini'));
+    try
+      Ini.WriteInteger('Backup', 'RetentionDays', Days);
+    finally
+      Ini.Free;
+    end;
+
+    ConfigureDailyBackupTask(FScheduleCheck.Checked,
+      Trim(FScheduleTime.Text));
+
+    if FScheduleCheck.Checked then
+    begin
+      FLog.Lines.Add('매일 예약 백업 등록 완료: ' + FScheduleTime.Text);
+      FLog.Lines.Add('백업 보관 기간: 최근 ' + IntToStr(Days) + '일');
+      MessageDlg('매일 예약 백업이 등록되었습니다.' + sLineBreak +
+        '실행 시간: ' + FScheduleTime.Text + sLineBreak +
+        '보관 기간: ' + IntToStr(Days) + '일' + sLineBreak +
+        'Windows 작업 스케줄러에서 SYSTEM 계정으로 실행됩니다.',
+        mtInformation, [mbOK], 0);
+    end
+    else
+    begin
+      FLog.Lines.Add('매일 예약 백업이 해제되었습니다.');
+      MessageDlg('매일 예약 백업을 해제했습니다.', mtInformation, [mbOK], 0);
+    end;
+  except
+    on E: Exception do
+    begin
+      FLog.Lines.Add('예약 백업 설정 오류: ' + E.Message);
+      MessageDlg('예약 백업 설정에 실패했습니다.' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
     end;
   end;
 end;

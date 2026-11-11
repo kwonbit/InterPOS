@@ -18,6 +18,7 @@ uses
   uShiftForm in 'uShiftForm.pas',
   uInventoryForm in 'uInventoryForm.pas',
   uBackupForm in 'uBackupForm.pas',
+  uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
@@ -25,12 +26,20 @@ uses
 
 var
   LoginForm: TfrmLogin;
+  BackupExitCode: Integer;
 
 begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.Title := 'InterPOS';
   Application.CreateForm(TdmDatabase, dmDatabase);
+
+  if SameText(ParamStr(1), '/backup') then
+  begin
+    BackupExitCode := RunScheduledBackup;
+    dmDatabase.Free;
+    Halt(BackupExitCode);
+  end;
 
   try
     uDatabase.dmDatabase.Connect;
