@@ -16,6 +16,7 @@ uses
   uSalesReportForm in 'uSalesReportForm.pas',
   uShiftForm in 'uShiftForm.pas',
   uInventoryForm in 'uInventoryForm.pas',
+  uBackupForm in 'uBackupForm.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
@@ -28,7 +29,7 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.Title := 'InterPOS';
-  Application.CreateForm(TdmDatabase, uDatabase.dmDatabase);
+  Application.CreateForm(TdmDatabase, dmDatabase);
 
   try
     uDatabase.dmDatabase.Connect;
