@@ -11,6 +11,7 @@ uses
   uMasterDataForm in 'uMasterDataForm.pas' {frmMasterData},
   uSalesForm in 'uSalesForm.pas' {frmSales},
   uReceiptPrinter in 'uReceiptPrinter.pas',
+  uCashDrawer in 'uCashDrawer.pas',
   uKitchenPrinter in 'uKitchenPrinter.pas',
   uKitchenDisplayForm in 'uKitchenDisplayForm.pas',
   uSalesReportForm in 'uSalesReportForm.pas',
