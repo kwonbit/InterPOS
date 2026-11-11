@@ -260,6 +260,11 @@ begin
   end;
 end;
 
+procedure TfrmPayables.GridCellClick(Column: TColumn);
+begin
+  LoadHistory;
+end;
+
 procedure TfrmPayables.SearchClick(Sender: TObject);
 begin
   try
