@@ -16,6 +16,7 @@ uses
   uSalesReportForm in 'uSalesReportForm.pas',
   uShiftForm in 'uShiftForm.pas',
   uInventoryForm in 'uInventoryForm.pas',
+  uBackupForm in 'uBackupForm.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};
 
