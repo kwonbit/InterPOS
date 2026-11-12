@@ -1057,6 +1057,8 @@ begin
         IngredientName := QItems.FieldByName('INGREDIENT_NAME').AsString;
         IngredientUnit := QItems.FieldByName('UNIT_CODE').AsString;
         IngredientQty := QItems.FieldByName('REQUIRED_QTY').AsFloat;
+        if IngredientQty <= 0 then
+          raise Exception.Create('레시피 사용량이 원재료 재고 단위의 최소 정밀도(0.001)보다 작습니다: ' + IngredientName);
 
         QStock.Close;
         QStock.SQL.Text :=
