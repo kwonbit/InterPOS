@@ -814,7 +814,10 @@ var
   MenuID: Integer;
   MenuName: string;
   ItemQty, StockBefore, StockAfter: Double;
-  StockMovementID: Int64;
+  StockMovementID, IngredientID: Int64;
+  IngredientName, IngredientUnit: string;
+  IngredientQty, IngredientStockBefore, IngredientStockAfter,
+    IngredientUnitCost: Double;
   DialogForm: TForm;
   MethodGroup: TRadioGroup;
   AmountLabel, ReceivedLabel, ChangeLabel: TLabel;
@@ -1029,6 +1032,83 @@ begin
         end
         else
           QStock.Close;
+        QItems.Next;
+      end;
+      QItems.Close;
+
+      // Deduct recipe ingredients in the same transaction as final payment.
+      // Aggregate by ingredient first because multiple menu lines may share it.
+      QItems.SQL.Text :=
+        'SELECT I.INGREDIENT_ID, I.INGREDIENT_NAME, I.UNIT_CODE, ' +
+        'CAST(SUM(R.QUANTITY * OI.QUANTITY) AS NUMERIC(15,3)) AS REQUIRED_QTY ' +
+        'FROM POS_ORDER_ITEM OI ' +
+        'JOIN POS_MENU_RECIPE R ON R.STORE_ID=:STORE_ID AND R.MENU_ID=OI.MENU_ID ' +
+        'JOIN POS_INGREDIENT I ON I.STORE_ID=R.STORE_ID ' +
+        'AND I.INGREDIENT_ID=R.INGREDIENT_ID ' +
+        'WHERE OI.ORDER_ID=:ORDER_ID ' +
+        'GROUP BY I.INGREDIENT_ID, I.INGREDIENT_NAME, I.UNIT_CODE ' +
+        'ORDER BY I.INGREDIENT_ID';
+      QItems.ParamByName('STORE_ID').AsInteger := FStoreID;
+      QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      QItems.Open;
+      while not QItems.Eof do
+      begin
+        IngredientID := QItems.FieldByName('INGREDIENT_ID').AsLargeInt;
+        IngredientName := QItems.FieldByName('INGREDIENT_NAME').AsString;
+        IngredientUnit := QItems.FieldByName('UNIT_CODE').AsString;
+        IngredientQty := QItems.FieldByName('REQUIRED_QTY').AsFloat;
+
+        QStock.Close;
+        QStock.SQL.Text :=
+          'SELECT ACTIVE_YN, STOCK_QTY, AVG_UNIT_COST FROM POS_INGREDIENT ' +
+          'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID WITH LOCK';
+        QStock.ParamByName('STORE_ID').AsInteger := FStoreID;
+        QStock.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+        QStock.Open;
+        if QStock.IsEmpty then
+          raise Exception.Create('레시피 원재료 정보를 찾을 수 없습니다: ' + IngredientName);
+        if not SameText(QStock.FieldByName('ACTIVE_YN').AsString, 'Y') then
+          raise Exception.Create('사용 중지된 원재료가 레시피에 등록되어 있습니다: ' + IngredientName);
+
+        IngredientStockBefore := QStock.FieldByName('STOCK_QTY').AsFloat;
+        IngredientUnitCost := QStock.FieldByName('AVG_UNIT_COST').AsFloat;
+        if IngredientStockBefore < IngredientQty then
+          raise Exception.CreateFmt(
+            '원재료 재고가 부족하여 결제할 수 없습니다. 원재료: %s / 현재고: %s %s / 필요량: %s %s',
+            [IngredientName, FormatFloat('#,##0.###', IngredientStockBefore),
+             IngredientUnit, FormatFloat('#,##0.###', IngredientQty), IngredientUnit]);
+        IngredientStockAfter := IngredientStockBefore - IngredientQty;
+        QStock.Close;
+
+        Q.SQL.Text :=
+          'UPDATE POS_INGREDIENT SET STOCK_QTY=:STOCK_QTY, ' +
+          'UPDATED_AT=CURRENT_TIMESTAMP ' +
+          'WHERE STORE_ID=:STORE_ID AND INGREDIENT_ID=:INGREDIENT_ID';
+        Q.ParamByName('STOCK_QTY').AsFloat := IngredientStockAfter;
+        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+        Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+        Q.ExecSQL;
+
+        StockMovementID := NextSequenceValue('GEN_POS_INGREDIENT_MOVEMENT_ID');
+        Q.SQL.Text :=
+          'INSERT INTO POS_INGREDIENT_MOVEMENT ' +
+          '(MOVEMENT_ID, STORE_ID, INGREDIENT_ID, MOVEMENT_TYPE, QUANTITY, ' +
+          'STOCK_BEFORE, STOCK_AFTER, UNIT_COST, REFERENCE_TYPE, REFERENCE_ID, ' +
+          'DESCRIPTION, EMPLOYEE_ID) ' +
+          'VALUES (:ID, :STORE_ID, :INGREDIENT_ID, ''OUT'', :QTY, :BEFORE_QTY, ' +
+          ':AFTER_QTY, :UNIT_COST, ''SALE'', :REFERENCE_ID, :DESCRIPTION, :EMPLOYEE_ID)';
+        Q.ParamByName('ID').AsLargeInt := StockMovementID;
+        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+        Q.ParamByName('INGREDIENT_ID').AsLargeInt := IngredientID;
+        Q.ParamByName('QTY').AsFloat := IngredientQty;
+        Q.ParamByName('BEFORE_QTY').AsFloat := IngredientStockBefore;
+        Q.ParamByName('AFTER_QTY').AsFloat := IngredientStockAfter;
+        Q.ParamByName('UNIT_COST').AsFloat := IngredientUnitCost;
+        Q.ParamByName('REFERENCE_ID').AsLargeInt := OrderID;
+        Q.ParamByName('DESCRIPTION').AsString := 'POS 판매 원재료 자동 차감 ' + OrderNo;
+        Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+        Q.ExecSQL;
+
         QItems.Next;
       end;
       QItems.Close;
