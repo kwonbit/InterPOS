@@ -297,8 +297,7 @@ begin
       else
         StatusText := '정상';
 
-      if FOnlyRecommend.Checked and (RecommendQty <= 0) and
-        (StockQty > SafetyQty) then
+      if FOnlyRecommend.Checked and (RecommendQty <= 0) then
       begin
         Q.Next;
         Continue;
