@@ -336,7 +336,7 @@ end;
 procedure TfrmIngredientRecipe.RefreshIngredients;
 var
   Q: TFDQuery;
-  R, TotalCount, LowCount, NegativeCount, NormalCount: Integer;
+  R, TotalCount, ShortageCount, NegativeCount, NormalCount: Integer;
   StockQty, LowQty: Double;
   StockStatus: string;
   ShowRow: Boolean;
@@ -352,7 +352,7 @@ begin
     FIngredientCombo.Items.Clear;
     R := 1;
     TotalCount := 0;
-    LowCount := 0;
+    ShortageCount := 0;
     NegativeCount := 0;
     NormalCount := 0;
     while not Q.Eof do
@@ -365,12 +365,11 @@ begin
       begin
         StockStatus := '음수 재고';
         Inc(NegativeCount);
-        Inc(LowCount);
       end
       else if (LowQty > 0) and (StockQty <= LowQty) then
       begin
         StockStatus := '안전재고 부족';
-        Inc(LowCount);
+        Inc(ShortageCount);
       end
       else
       begin
@@ -404,8 +403,8 @@ begin
       FStockSummaryLabel.Caption := '등록 원재료 0종'
     else
       FStockSummaryLabel.Caption := Format(
-        '전체 %d종  |  정상 %d종  |  부족 %d종  |  음수 %d종',
-        [TotalCount, NormalCount, LowCount, NegativeCount]);
+        '전체 %d종  |  정상 %d종  |  안전재고 부족 %d종  |  음수 %d종',
+        [TotalCount, NormalCount, ShortageCount, NegativeCount]);
 
     if R = 1 then
     begin
