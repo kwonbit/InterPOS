@@ -39,6 +39,7 @@ type
     FCart: array of TCartItem;
     FCartGroups: array of TIntegerArray;
     FTableCombo: TComboBox;
+    FTableIDs: TIntegerArray;
     FTableNameLabel: TLabel;
     FTablePanel: TPanel;
     FSalesPanel: TPanel;
@@ -438,6 +439,7 @@ var
   OrderedAt: TDateTime;
 begin
   FTableCombo.Items.Clear;
+  SetLength(FTableIDs, 0);
   while FTableCards.ControlCount > 0 do
     FTableCards.Controls[0].Free;
 
@@ -461,8 +463,9 @@ begin
     begin
       TableID := Q.FieldByName('TABLE_ID').AsInteger;
       TableName := Q.FieldByName('TABLE_NAME').AsString;
-      FTableCombo.Items.AddObject(TableName,
-        TObject(Pointer(NativeInt(TableID))));
+      FTableCombo.Items.Add(TableName);
+      SetLength(FTableIDs, Length(FTableIDs) + 1);
+      FTableIDs[High(FTableIDs)] := TableID;
 
       OrderID := 0;
       Amount := 0;
@@ -592,7 +595,7 @@ var
 begin
   TableID := TControl(Sender).Tag;
   for I := 0 to FTableCombo.Items.Count - 1 do
-    if NativeInt(FTableCombo.Items.Objects[I]) = TableID then
+    if (I < Length(FTableIDs)) and (FTableIDs[I] = TableID) then
     begin
       FTableCombo.ItemIndex := I;
       FTableNameLabel.Caption := FTableCombo.Items[I];
@@ -1239,7 +1242,8 @@ function TfrmSales.SelectedTableID: Integer;
 begin
   Result := 0;
   if FTableCombo.ItemIndex >= 0 then
-    Result := NativeInt(FTableCombo.Items.Objects[FTableCombo.ItemIndex]);
+    if FTableCombo.ItemIndex < Length(FTableIDs) then
+      Result := FTableIDs[FTableCombo.ItemIndex];
 end;
 
 function TfrmSales.NextSequenceValue(const ASequenceName: string): Int64;
