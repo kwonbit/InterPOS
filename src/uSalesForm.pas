@@ -15,6 +15,9 @@ type
     Quantity: Integer;
     OptionText: string;
     OptionAmount: Currency;
+    OrderItemID: Int64;
+    IsPersisted: Boolean;
+    OriginalQuantity: Integer;
   end;
 
   TOptionGroupControls = record
@@ -37,6 +40,8 @@ type
     FSalesPanel: TPanel;
     FTableCards: TScrollBox;
     FShowTableMenus: Boolean;
+    FLoadedOrderID: Int64;
+    FLoadedOrderItemIDs: array of Int64;
     FCategoryPanel: TScrollBox;
     FMenuPanel: TScrollBox;
     FCartGrid: TStringGrid;
@@ -45,6 +50,7 @@ type
   FPaymentButton: TButton;
     procedure LoadTables;
     procedure TableCardClick(Sender: TObject);
+    procedure LoadExistingOrderClick(Sender: TObject);
     procedure TableDisplayToggleClick(Sender: TObject);
     procedure BackToTablesClick(Sender: TObject);
     procedure LoadCategories;
@@ -89,7 +95,7 @@ var
   Header, MainPanel, MenuArea, CartPanel, CartHeader, ButtonPanel: TPanel;
   TableHeader: TPanel;
   Lbl, TableTitle: TLabel;
-  Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn: TButton;
+  Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn, LoadOrderBtn: TButton;
 begin
   Caption := 'POS 판매';
   Font.Name := '맑은 고딕';
@@ -101,6 +107,7 @@ begin
   Position := poScreenCenter;
   Color := $00F1F3F5;
   FShowTableMenus := False;
+  FLoadedOrderID := 0;
 
   { 후불제 매장의 첫 화면은 테이블 현황 화면이다. }
   FTablePanel := TPanel.Create(Self);
@@ -244,6 +251,16 @@ begin
   Lbl.Font.Name := Font.Name;
   Lbl.Font.Size := 14;
   Lbl.Font.Style := [fsBold];
+
+  LoadOrderBtn := TButton.Create(Self);
+  LoadOrderBtn.Parent := CartHeader;
+  LoadOrderBtn.Left := 310;
+  LoadOrderBtn.Top := 7;
+  LoadOrderBtn.Width := 154;
+  LoadOrderBtn.Height := 34;
+  LoadOrderBtn.Caption := '기존 주문내역 불러오기';
+  LoadOrderBtn.Font.Name := Font.Name;
+  LoadOrderBtn.OnClick := LoadExistingOrderClick;
 
   FCartGrid := TStringGrid.Create(Self);
   FCartGrid.Parent := CartPanel;
@@ -570,6 +587,75 @@ begin
   FTablePanel.Visible := False;
   FSalesPanel.Visible := True;
   FSalesPanel.BringToFront;
+end;
+
+
+procedure TfrmSales.LoadExistingOrderClick(Sender: TObject);
+var
+  Q, QItems: TFDQuery;
+  OrderID: Int64;
+  N: Integer;
+begin
+  if SelectedTableID = 0 then
+    raise Exception.Create('먼저 테이블을 선택해 주세요.');
+  if Length(FCart) > 0 then
+    if MessageDlg('현재 주문 리스트의 미저장 내용은 지워집니다. 기존 주문내역을 불러올까요?',
+      mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+
+  Q := TFDQuery.Create(nil);
+  QItems := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    QItems.Connection := dmDatabase.Connection;
+    Q.SQL.Text :=
+      'SELECT FIRST 1 ORDER_ID FROM POS_ORDER ' +
+      'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+      'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+      'ORDER BY ORDERED_AT DESC';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+    Q.Open;
+    if Q.IsEmpty then
+      raise Exception.Create('선택한 테이블에 불러올 진행 중 주문이 없습니다.');
+    OrderID := Q.FieldByName('ORDER_ID').AsLargeInt;
+    Q.Close;
+
+    SetLength(FCart, 0);
+    SetLength(FLoadedOrderItemIDs, 0);
+    QItems.SQL.Text :=
+      'SELECT ORDER_ITEM_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, ' +
+      'OPTION_TEXT, OPTION_AMOUNT FROM POS_ORDER_ITEM ' +
+      'WHERE ORDER_ID=:ORDER_ID ORDER BY ORDER_ITEM_ID';
+    QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+    QItems.Open;
+    while not QItems.Eof do
+    begin
+      N := Length(FCart);
+      SetLength(FCart, N + 1);
+      FCart[N].OrderItemID := QItems.FieldByName('ORDER_ITEM_ID').AsLargeInt;
+      FCart[N].IsPersisted := True;
+      FCart[N].OriginalQuantity := QItems.FieldByName('QUANTITY').AsInteger;
+      FCart[N].MenuID := QItems.FieldByName('MENU_ID').AsInteger;
+      FCart[N].MenuName := QItems.FieldByName('MENU_NAME').AsString;
+      FCart[N].UnitPrice := QItems.FieldByName('UNIT_PRICE').AsCurrency;
+      FCart[N].Quantity := FCart[N].OriginalQuantity;
+      FCart[N].OptionText := QItems.FieldByName('OPTION_TEXT').AsString;
+      FCart[N].OptionAmount := QItems.FieldByName('OPTION_AMOUNT').AsCurrency;
+      N := Length(FLoadedOrderItemIDs);
+      SetLength(FLoadedOrderItemIDs, N + 1);
+      FLoadedOrderItemIDs[N] := FCart[N].OrderItemID;
+      QItems.Next;
+    end;
+    FLoadedOrderID := OrderID;
+  finally
+    QItems.Free;
+    Q.Free;
+  end;
+
+  RefreshCart;
+  FStatusLabel.Caption := '기존 주문내역을 불러왔습니다. 메뉴 추가·수량 변경·삭제 후 주문 저장을 눌러주세요.';
+  if Length(FCart) = 0 then
+    MessageDlg('기존 주문에 등록된 메뉴가 없습니다.', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSales.TableDisplayToggleClick(Sender: TObject);
@@ -1508,26 +1594,26 @@ var
   OrderID, OrderItemID, KitchenTicketID: Int64;
   OrderNo: string;
   Q: TFDQuery;
-  I: Integer;
+  I, J: Integer;
   Total, ExistingTotal: Currency;
-  IsExistingOrder: Boolean;
+  IsExistingOrder, HasKitchenChanges, ItemFound: Boolean;
 begin
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
   if Length(FCart) = 0 then
-    raise Exception.Create('주문할 메뉴를 선택해 주세요.');
+    raise Exception.Create('주문 상품을 모두 삭제할 수 없습니다. 주문 취소 기능을 이용해 주세요.');
 
   Total := CartTotal;
   ExistingTotal := 0;
   IsExistingOrder := False;
+  HasKitchenChanges := False;
   OrderID := 0;
+  KitchenTicketID := 0;
   dmDatabase.Connection.StartTransaction;
   try
     Q := TFDQuery.Create(nil);
     try
       Q.Connection := dmDatabase.Connection;
-      // Serialize order creation for this table across all POS terminals.
-      // Locking the table row also protects the 'no open order exists' case.
       Q.SQL.Text := 'SELECT TABLE_ID FROM POS_TABLE ' +
         'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID WITH LOCK';
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
@@ -1540,7 +1626,7 @@ begin
       Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID, ORDER_NO, TOTAL_AMOUNT FROM POS_ORDER ' +
         'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
         'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
-        'ORDER BY ORDERED_AT DESC';
+        'ORDER BY ORDERED_AT DESC WITH LOCK';
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
       Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
       Q.Open;
@@ -1552,6 +1638,12 @@ begin
         ExistingTotal := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
       end;
       Q.Close;
+
+      if FLoadedOrderID > 0 then
+      begin
+        if (not IsExistingOrder) or (OrderID <> FLoadedOrderID) then
+          raise Exception.Create('불러온 주문이 다른 단말에서 변경되었거나 종료되었습니다. 주문내역을 다시 불러와 주세요.');
+      end;
 
       if not IsExistingOrder then
       begin
@@ -1571,50 +1663,133 @@ begin
         Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
         Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
         Q.ExecSQL;
+        HasKitchenChanges := True;
+      end
+      else if FLoadedOrderID = 0 then
+      begin
+        // 기존 주문내역을 불러오지 않은 경우에는 현재 동작과 같이 새 메뉴만 추가한다.
+        HasKitchenChanges := True;
       end;
 
-      KitchenTicketID := NextSequenceValue('GEN_POS_KITCHEN_TICKET_ID');
-      Q.SQL.Text := 'INSERT INTO POS_KITCHEN_TICKET ' +
-        '(KITCHEN_TICKET_ID, ORDER_ID, TICKET_NO, STATUS) ' +
-        'VALUES (:TICKET_ID, :ORDER_ID, :TICKET_NO, ''NEW'')';
-      Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
-      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
-      Q.ParamByName('TICKET_NO').AsString := OrderNo + '-' +
-        FormatFloat('000000', KitchenTicketID);
-      Q.ExecSQL;
+      if FLoadedOrderID > 0 then
+      begin
+        // Remove persisted lines deleted from the editable order list.
+        for I := 0 to High(FLoadedOrderItemIDs) do
+        begin
+          ItemFound := False;
+          for J := 0 to High(FCart) do
+            if FCart[J].IsPersisted and
+              (FCart[J].OrderItemID = FLoadedOrderItemIDs[I]) then
+            begin
+              ItemFound := True;
+              Break;
+            end;
+          if not ItemFound then
+          begin
+            Q.SQL.Text := 'DELETE FROM POS_ORDER_ITEM ' +
+              'WHERE ORDER_ID=:ORDER_ID AND ORDER_ITEM_ID=:ITEM_ID';
+            Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+            Q.ParamByName('ITEM_ID').AsLargeInt := FLoadedOrderItemIDs[I];
+            Q.ExecSQL;
+          end;
+        end;
+
+        for I := 0 to High(FCart) do
+        begin
+          if FCart[I].IsPersisted then
+          begin
+            if FCart[I].Quantity <> FCart[I].OriginalQuantity then
+            begin
+              if not HasKitchenChanges then
+                HasKitchenChanges := True;
+            end;
+          end
+          else
+            HasKitchenChanges := True;
+        end;
+      end;
+
+      if HasKitchenChanges then
+      begin
+        KitchenTicketID := NextSequenceValue('GEN_POS_KITCHEN_TICKET_ID');
+        Q.SQL.Text := 'INSERT INTO POS_KITCHEN_TICKET ' +
+          '(KITCHEN_TICKET_ID, ORDER_ID, TICKET_NO, STATUS) ' +
+          'VALUES (:TICKET_ID, :ORDER_ID, :TICKET_NO, ''NEW'')';
+        Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
+        Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+        Q.ParamByName('TICKET_NO').AsString := OrderNo + '-' +
+          FormatFloat('000000', KitchenTicketID);
+        Q.ExecSQL;
+      end;
 
       for I := 0 to High(FCart) do
       begin
-        OrderItemID := NextSequenceValue('GEN_POS_ORDER_ITEM_ID');
-        Q.SQL.Text := 'INSERT INTO POS_ORDER_ITEM ' +
-          '(ORDER_ITEM_ID, ORDER_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT, OPTION_AMOUNT, KITCHEN_TICKET_ID) ' +
-          'VALUES (:ITEM_ID, :ORDER_ID, :MENU_ID, :MENU_NAME, :UNIT_PRICE, :QUANTITY, :LINE_AMOUNT, :OPTION_TEXT, :OPTION_AMOUNT, :TICKET_ID)';
-        Q.ParamByName('ITEM_ID').AsLargeInt := OrderItemID;
-        Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
-        Q.ParamByName('MENU_ID').AsInteger := FCart[I].MenuID;
-        Q.ParamByName('MENU_NAME').AsString := FCart[I].MenuName;
-        Q.ParamByName('UNIT_PRICE').AsCurrency := FCart[I].UnitPrice;
-        Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
-        Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
-        Q.ParamByName('OPTION_TEXT').AsString := FCart[I].OptionText;
-        Q.ParamByName('OPTION_AMOUNT').AsCurrency := FCart[I].OptionAmount;
-        Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
-        Q.ExecSQL;
+        if FLoadedOrderID > 0 then
+        begin
+          if FCart[I].IsPersisted then
+          begin
+            if FCart[I].Quantity <> FCart[I].OriginalQuantity then
+            begin
+              Q.SQL.Text := 'UPDATE POS_ORDER_ITEM SET QUANTITY=:QUANTITY, ' +
+                'LINE_AMOUNT=:LINE_AMOUNT, KITCHEN_TICKET_ID=:TICKET_ID ' +
+                'WHERE ORDER_ID=:ORDER_ID AND ORDER_ITEM_ID=:ITEM_ID';
+              Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
+              Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
+              Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
+              Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+              Q.ParamByName('ITEM_ID').AsLargeInt := FCart[I].OrderItemID;
+              Q.ExecSQL;
+            end;
+          end
+          else
+          begin
+            OrderItemID := NextSequenceValue('GEN_POS_ORDER_ITEM_ID');
+            Q.SQL.Text := 'INSERT INTO POS_ORDER_ITEM ' +
+              '(ORDER_ITEM_ID, ORDER_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT, OPTION_AMOUNT, KITCHEN_TICKET_ID) ' +
+              'VALUES (:ITEM_ID, :ORDER_ID, :MENU_ID, :MENU_NAME, :UNIT_PRICE, :QUANTITY, :LINE_AMOUNT, :OPTION_TEXT, :OPTION_AMOUNT, :TICKET_ID)';
+            Q.ParamByName('ITEM_ID').AsLargeInt := OrderItemID;
+            Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+            Q.ParamByName('MENU_ID').AsInteger := FCart[I].MenuID;
+            Q.ParamByName('MENU_NAME').AsString := FCart[I].MenuName;
+            Q.ParamByName('UNIT_PRICE').AsCurrency := FCart[I].UnitPrice;
+            Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
+            Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
+            Q.ParamByName('OPTION_TEXT').AsString := FCart[I].OptionText;
+            Q.ParamByName('OPTION_AMOUNT').AsCurrency := FCart[I].OptionAmount;
+            Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
+            Q.ExecSQL;
+          end;
+        end
+        else
+        begin
+          OrderItemID := NextSequenceValue('GEN_POS_ORDER_ITEM_ID');
+          Q.SQL.Text := 'INSERT INTO POS_ORDER_ITEM ' +
+            '(ORDER_ITEM_ID, ORDER_ID, MENU_ID, MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT, OPTION_AMOUNT, KITCHEN_TICKET_ID) ' +
+            'VALUES (:ITEM_ID, :ORDER_ID, :MENU_ID, :MENU_NAME, :UNIT_PRICE, :QUANTITY, :LINE_AMOUNT, :OPTION_TEXT, :OPTION_AMOUNT, :TICKET_ID)';
+          Q.ParamByName('ITEM_ID').AsLargeInt := OrderItemID;
+          Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+          Q.ParamByName('MENU_ID').AsInteger := FCart[I].MenuID;
+          Q.ParamByName('MENU_NAME').AsString := FCart[I].MenuName;
+          Q.ParamByName('UNIT_PRICE').AsCurrency := FCart[I].UnitPrice;
+          Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
+          Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
+          Q.ParamByName('OPTION_TEXT').AsString := FCart[I].OptionText;
+          Q.ParamByName('OPTION_AMOUNT').AsCurrency := FCart[I].OptionAmount;
+          Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
+          Q.ExecSQL;
+        end;
       end;
 
-      if IsExistingOrder then
-      begin
-        Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL, ' +
-          'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
-          'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
-          'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
-        Q.ParamByName('TOTAL').AsCurrency := ExistingTotal + Total;
-        Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
-        Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
-        Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-        Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
-        Q.ExecSQL;
-      end;
+      Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL, ' +
+        'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
+        'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
+        'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
+      Q.ParamByName('TOTAL').AsCurrency := Total;
+      Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
+      Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+      Q.ExecSQL;
     finally
       Q.Free;
     end;
@@ -1625,23 +1800,25 @@ begin
   end;
 
   SetLength(FCart, 0);
+  SetLength(FLoadedOrderItemIDs, 0);
+  FLoadedOrderID := 0;
   RefreshCart;
   UpdateTableStatus;
-  try
-    TKitchenPrinter.PrintTicket(dmDatabase.Connection, FStoreID, KitchenTicketID);
-  except
-    on E: Exception do
-      MessageDlg('주문은 저장되었지만 주방 주문서 출력에 실패했습니다.' +
-        sLineBreak + E.Message + sLineBreak +
-        '주방 주문현황에서 해당 주문서를 선택해 재출력해 주세요.',
-        mtWarning, [mbOK], 0);
+  if KitchenTicketID > 0 then
+  begin
+    try
+      TKitchenPrinter.PrintTicket(dmDatabase.Connection, FStoreID, KitchenTicketID);
+    except
+      on E: Exception do
+        MessageDlg('주문은 저장되었지만 주방 주문서 출력에 실패했습니다.' +
+          sLineBreak + E.Message + sLineBreak +
+          '주방 주문현황에서 해당 주문서를 선택해 재출력해 주세요.',
+          mtWarning, [mbOK], 0);
+    end;
   end;
-  if IsExistingOrder then
-    FStatusLabel.Caption := '기존 주문에 추가 저장되었습니다. 주문번호: ' + OrderNo;
   MessageDlg('주문이 정상적으로 저장되었습니다.' + sLineBreak +
     '주문번호: ' + OrderNo + sLineBreak +
-    '추가 금액: ' + FormatCurr('#,##0', Total) + '원' + sLineBreak +
-    '테이블 주문 합계: ' + FormatCurr('#,##0', ExistingTotal + Total) + '원',
+    '주문 합계: ' + FormatCurr('#,##0', Total) + '원',
     mtInformation, [mbOK], 0);
 end;
 
