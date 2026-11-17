@@ -354,7 +354,7 @@ begin
       Inc(R);
       Q.Next;
     end;
-    FGrid.RowCount := R;
+    if R > 1 then FGrid.RowCount := R else FGrid.RowCount := 2;
     if R = 1 then FGrid.Cells[1,1] := '조회된 입출고 이력이 없습니다.';
     SetStatus(Format('%s ~ %s | %d건 조회',
       [FormatDateTime('yyyy-mm-dd', FStartDate.Date),
