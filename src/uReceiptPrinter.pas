@@ -367,8 +367,8 @@ begin
       AddText(Stream, ItemName + sLineBreak);
       if OptionText <> '' then AddText(Stream, '  ' + OptionText + sLineBreak);
       AddText(Stream, '  ' + FormatCurr('#,##0', Q.FieldByName('UNIT_PRICE').AsCurrency) +
-        ' x ' + FormatCurr('#,##0.###', Q.FieldByName('QUANTITY').AsFloat) +
-        ' = ' + FormatCurr('#,##0', Q.FieldByName('LINE_AMOUNT').AsCurrency) + '원' +
+        ' x ' + FormatCurr('#,##0.###', Q.FieldByName('TOTAL_QTY').AsFloat) +
+        ' = ' + FormatCurr('#,##0', Q.FieldByName('TOTAL_LINE_AMOUNT').AsCurrency) + '원' +
         sLineBreak);
       Q.Next;
     end;
