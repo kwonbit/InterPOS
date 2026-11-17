@@ -46,10 +46,10 @@ type
     FMenuPanel: TScrollBox;
     FCartGrid: TStringGrid;
     FLoadOrderButton: TButton;
-    procedure DrawCartCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
     FTotalLabel: TLabel;
     FStatusLabel: TLabel;
-  FPaymentButton: TButton;
+    FPaymentButton: TButton;
+    procedure DrawCartCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
     procedure LoadTables;
     procedure TableCardClick(Sender: TObject);
     procedure LoadExistingOrderClick(Sender: TObject);
