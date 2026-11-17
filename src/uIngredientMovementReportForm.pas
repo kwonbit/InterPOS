@@ -267,7 +267,7 @@ procedure TfrmIngredientMovementReport.RefreshClick(Sender: TObject);
 var
   Q: TFDQuery;
   R: Integer;
-  InQty, OutQty, AdjustQty: Double;
+  InQty, OutQty, AdjustInQty, AdjustOutQty: Double;
   InCount, OutCount, AdjustCount: Integer;
   TypeCode: string;
 begin
@@ -283,7 +283,8 @@ begin
       'SELECT COUNT(*) AS MOVEMENT_COUNT, ' +
       'COALESCE(SUM(IIF(M.MOVEMENT_TYPE=''IN'', M.QUANTITY, 0)),0) AS IN_QTY, ' +
       'COALESCE(SUM(IIF(M.MOVEMENT_TYPE=''OUT'', M.QUANTITY, 0)),0) AS OUT_QTY, ' +
-      'COALESCE(SUM(IIF(M.MOVEMENT_TYPE=''ADJUST'', M.QUANTITY, 0)),0) AS ADJUST_QTY, ' +
+      'COALESCE(SUM(IIF(M.MOVEMENT_TYPE=''ADJUST'' AND M.STOCK_AFTER>M.STOCK_BEFORE, M.QUANTITY, 0)),0) AS ADJUST_IN_QTY, ' +
+      'COALESCE(SUM(IIF(M.MOVEMENT_TYPE=''ADJUST'' AND M.STOCK_AFTER<M.STOCK_BEFORE, M.QUANTITY, 0)),0) AS ADJUST_OUT_QTY, ' +
       'SUM(IIF(M.MOVEMENT_TYPE=''IN'',1,0)) AS IN_COUNT, ' +
       'SUM(IIF(M.MOVEMENT_TYPE=''OUT'',1,0)) AS OUT_COUNT, ' +
       'SUM(IIF(M.MOVEMENT_TYPE=''ADJUST'',1,0)) AS ADJUST_COUNT ' +
@@ -306,17 +307,19 @@ begin
     Q.Open;
     InQty := Q.FieldByName('IN_QTY').AsFloat;
     OutQty := Q.FieldByName('OUT_QTY').AsFloat;
-    AdjustQty := Q.FieldByName('ADJUST_QTY').AsFloat;
+    AdjustInQty := Q.FieldByName('ADJUST_IN_QTY').AsFloat;
+    AdjustOutQty := Q.FieldByName('ADJUST_OUT_QTY').AsFloat;
     InCount := Q.FieldByName('IN_COUNT').AsInteger;
     OutCount := Q.FieldByName('OUT_COUNT').AsInteger;
     AdjustCount := Q.FieldByName('ADJUST_COUNT').AsInteger;
     Q.Close;
 
     FSummaryLabel.Caption :=
-      Format('입고 %s (%d건)    |    사용/출고 %s (%d건)    |    재고조정 %s (%d건)',
+      Format('입고 %s (%d건)    |    사용/출고 %s (%d건)    |    재고조정 증가 +%s / 감소 -%s (%d건)',
         [FormatFloat('#,##0.###', InQty), InCount,
          FormatFloat('#,##0.###', OutQty), OutCount,
-         FormatFloat('#,##0.###', AdjustQty), AdjustCount]);
+         FormatFloat('#,##0.###', AdjustInQty),
+         FormatFloat('#,##0.###', AdjustOutQty), AdjustCount]);
 
     Q.SQL.Text :=
       'SELECT M.CREATED_AT, I.INGREDIENT_NAME, I.UNIT_CODE, M.MOVEMENT_TYPE, ' +
@@ -345,7 +348,11 @@ begin
       FGrid.Cells[1,R] := Q.FieldByName('INGREDIENT_NAME').AsString;
       FGrid.Cells[2,R] := Q.FieldByName('UNIT_CODE').AsString;
       FGrid.Cells[3,R] := MovementName(Q.FieldByName('MOVEMENT_TYPE').AsString);
-      FGrid.Cells[4,R] := FormatFloat('#,##0.###', Q.FieldByName('QUANTITY').AsFloat);
+      if SameText(Q.FieldByName('MOVEMENT_TYPE').AsString, 'ADJUST') then
+        FGrid.Cells[4,R] := FormatFloat('+0.###;-0.###;0',
+          Q.FieldByName('STOCK_AFTER').AsFloat - Q.FieldByName('STOCK_BEFORE').AsFloat)
+      else
+        FGrid.Cells[4,R] := FormatFloat('#,##0.###', Q.FieldByName('QUANTITY').AsFloat);
       FGrid.Cells[5,R] := FormatFloat('#,##0.###', Q.FieldByName('STOCK_BEFORE').AsFloat);
       FGrid.Cells[6,R] := FormatFloat('#,##0.###', Q.FieldByName('STOCK_AFTER').AsFloat);
       FGrid.Cells[7,R] := FormatCurr('#,##0.0000', Q.FieldByName('UNIT_COST').AsCurrency);
