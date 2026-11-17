@@ -42,6 +42,7 @@ type
     FIngredientPurchaseButton: TButton;
     FIngredientStocktakeButton: TButton;
     FIngredientMovementButton: TButton;
+    FIngredientForecastButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -55,6 +56,7 @@ type
     procedure btnIngredientPurchaseClick(Sender: TObject);
     procedure btnIngredientStocktakeClick(Sender: TObject);
     procedure btnIngredientMovementClick(Sender: TObject);
+    procedure btnIngredientForecastClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -65,7 +67,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm, uIngredientPurchaseForm, uIngredientStocktakeForm, uIngredientMovementReportForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm, uIngredientPurchaseForm, uIngredientStocktakeForm, uIngredientMovementReportForm, uIngredientForecastForm;
 
 {$R *.dfm}
 
@@ -109,6 +111,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FIngredientMovementButton) then
     FIngredientMovementButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FIngredientForecastButton) then
+    FIngredientForecastButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -230,6 +235,14 @@ begin
   FIngredientMovementButton.Font.Name := Font.Name;
   FIngredientMovementButton.Visible := False;
   FIngredientMovementButton.OnClick := btnIngredientMovementClick;
+
+  FIngredientForecastButton := TButton.Create(Self);
+  FIngredientForecastButton.Parent := pnlWork;
+  FIngredientForecastButton.SetBounds(32, 552, 300, 48);
+  FIngredientForecastButton.Caption := '원재료 재고 예측 / 구매 추천';
+  FIngredientForecastButton.Font.Name := Font.Name;
+  FIngredientForecastButton.Visible := False;
+  FIngredientForecastButton.OnClick := btnIngredientForecastClick;
   UpdateDatabaseStatus;
 end;
 
@@ -545,6 +558,34 @@ begin
     end;
   finally
     ReportForm.Free;
+  end;
+end;
+
+
+procedure TfrmMain.btnIngredientForecastClick(Sender: TObject);
+var
+  ForecastForm: TfrmIngredientForecast;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('원재료 재고 예측 조회 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  ForecastForm := TfrmIngredientForecast.Create(Self);
+  try
+    try
+      ForecastForm.SetStoreID(dmDatabase.StoreID);
+      ForecastForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('원재료 재고 예측 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + '원재료 레시피 및 입출고 이력 구성을 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    ForecastForm.Free;
   end;
 end;
 
