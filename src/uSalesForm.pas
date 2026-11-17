@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils, System.DateUtils, Data.DB,
+  Winapi.Windows, System.SysUtils, System.Classes, System.UITypes, System.Math, System.StrUtils, System.DateUtils, Data.DB,
   FireDAC.Comp.Client, FireDAC.Stan.Param, Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls,
   Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs, Vcl.CheckLst;
 
@@ -619,7 +619,7 @@ begin
 
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
-  if Length(FCart) > 0)
+  if Length(FCart) > 0 then
     if MessageDlg('현재 주문 리스트의 미저장 내용은 지워집니다. 기존 주문내역을 불러올까요?',
       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
 
