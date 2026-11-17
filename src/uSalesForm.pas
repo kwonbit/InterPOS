@@ -1644,6 +1644,9 @@ begin
       end;
       Q.Close;
 
+      if IsExistingOrder and (FLoadedOrderID = 0) then
+        Total := ExistingTotal + Total;
+
       if FLoadedOrderID > 0 then
       begin
         if (not IsExistingOrder) or (OrderID <> FLoadedOrderID) then
