@@ -238,7 +238,7 @@ begin
 
   FIngredientForecastButton := TButton.Create(Self);
   FIngredientForecastButton.Parent := pnlWork;
-  FIngredientForecastButton.SetBounds(32, 552, 300, 48);
+  FIngredientForecastButton.SetBounds(352, 488, 300, 48);
   FIngredientForecastButton.Caption := '원재료 재고 예측 / 구매 추천';
   FIngredientForecastButton.Font.Name := Font.Name;
   FIngredientForecastButton.Visible := False;
