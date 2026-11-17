@@ -25,6 +25,7 @@ uses
   uFinancialSummaryForm in 'uFinancialSummaryForm.pas' {frmFinancialSummary},
   uIngredientRecipeForm in 'uIngredientRecipeForm.pas' {frmIngredientRecipe},
   uIngredientPurchaseForm in 'uIngredientPurchaseForm.pas' {frmIngredientPurchase},
+  uIngredientStocktakeForm in 'uIngredientStocktakeForm.pas' {frmIngredientStocktake},
   uScheduledBackup in 'uScheduledBackup.pas',
   uAuth in 'uAuth.pas',
   uDatabase in 'uDatabase.pas' {dmDatabase: TDataModule};

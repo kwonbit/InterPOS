@@ -40,6 +40,7 @@ type
     FFinancialButton: TButton;
     FIngredientRecipeButton: TButton;
     FIngredientPurchaseButton: TButton;
+    FIngredientStocktakeButton: TButton;
     procedure UpdateDatabaseStatus;
     procedure btnInventoryClick(Sender: TObject);
     procedure btnShiftClick(Sender: TObject);
@@ -51,6 +52,7 @@ type
     procedure btnFinancialClick(Sender: TObject);
     procedure btnIngredientsClick(Sender: TObject);
     procedure btnIngredientPurchaseClick(Sender: TObject);
+    procedure btnIngredientStocktakeClick(Sender: TObject);
   public
     procedure SetSession(const ASession: TEmployeeSession);
   end;
@@ -61,7 +63,7 @@ var
 implementation
 
 uses
-  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm, uIngredientPurchaseForm;
+  uDatabase, uEmployeeForm, uMasterDataForm, uSalesForm, uKitchenDisplayForm, uSalesReportForm, uShiftForm, uInventoryForm, uBackupForm, uSupplierForm, uPurchaseForm, uPayableForm, uExpenseForm, uFinancialSummaryForm, uIngredientRecipeForm, uIngredientPurchaseForm, uIngredientStocktakeForm;
 
 {$R *.dfm}
 
@@ -99,6 +101,9 @@ begin
       SameText(FSession.RoleCode, 'MANAGER');
   if Assigned(FIngredientPurchaseButton) then
     FIngredientPurchaseButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
+      SameText(FSession.RoleCode, 'MANAGER');
+  if Assigned(FIngredientStocktakeButton) then
+    FIngredientStocktakeButton.Visible := SameText(FSession.RoleCode, 'OWNER') or
       SameText(FSession.RoleCode, 'MANAGER');
   if FSession.EmployeeID > 0 then
     Caption := 'InterPOS - ' + FSession.EmployeeName + ' (' +
@@ -204,6 +209,14 @@ begin
   FIngredientPurchaseButton.Font.Name := Font.Name;
   FIngredientPurchaseButton.Visible := False;
   FIngredientPurchaseButton.OnClick := btnIngredientPurchaseClick;
+
+  FIngredientStocktakeButton := TButton.Create(Self);
+  FIngredientStocktakeButton.Parent := pnlWork;
+  FIngredientStocktakeButton.SetBounds(32, 424, 300, 48);
+  FIngredientStocktakeButton.Caption := '원재료 재고 실사 / 수량 조정';
+  FIngredientStocktakeButton.Font.Name := Font.Name;
+  FIngredientStocktakeButton.Visible := False;
+  FIngredientStocktakeButton.OnClick := btnIngredientStocktakeClick;
   UpdateDatabaseStatus;
 end;
 
@@ -465,6 +478,33 @@ begin
     end;
   finally
     IngredientPurchaseForm.Free;
+  end;
+end;
+
+procedure TfrmMain.btnIngredientStocktakeClick(Sender: TObject);
+var
+  StocktakeForm: TfrmIngredientStocktake;
+begin
+  if not (SameText(FSession.RoleCode, 'OWNER') or
+    SameText(FSession.RoleCode, 'MANAGER')) then
+  begin
+    MessageDlg('원재료 재고 실사 권한이 없습니다.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  StocktakeForm := TfrmIngredientStocktake.Create(Self);
+  try
+    try
+      StocktakeForm.SetContext(dmDatabase.StoreID, FSession.EmployeeID);
+      StocktakeForm.ShowModal;
+    except
+      on E: Exception do
+        MessageDlg('원재료 재고 실사 화면을 열지 못했습니다: ' + E.Message +
+          sLineBreak + 'database/18_ingredient_stocktaking.sql 적용 여부를 확인해 주세요.',
+          mtError, [mbOK], 0);
+    end;
+  finally
+    StocktakeForm.Free;
   end;
 end;
 
