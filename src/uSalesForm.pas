@@ -231,6 +231,7 @@ begin
   FCustomerCountEdit.Parent := Header;
   FCustomerCountEdit.SetBounds(310, 32, 58, 26);
   FCustomerCountEdit.Text := '1';
+  FCustomerCountEdit.MaxLength := 3;
   FCustomerCountEdit.Alignment := taRightJustify;
   OrdererLabel := TLabel.Create(Self);
   OrdererLabel.Parent := Header;
@@ -241,6 +242,7 @@ begin
   FOrdererEdit := TEdit.Create(Self);
   FOrdererEdit.Parent := Header;
   FOrdererEdit.SetBounds(380, 32, 130, 26);
+  FOrdererEdit.MaxLength := 60;
   FStatusLabel.Left := 525;
   FStatusLabel.Top := 24;
   FStatusLabel.Caption := '주문할 메뉴를 선택하세요.';
@@ -503,7 +505,7 @@ begin
         'CUSTOMER_COUNT, ORDERER_NAME FROM POS_ORDER ' +
         'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
         'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
-        'ORDER BY ORDERED_AT';
+        'ORDER BY ORDERED_AT DESC';
       QOrder.ParamByName('STORE_ID').AsInteger := FStoreID;
       QOrder.ParamByName('TABLE_ID').AsInteger := TableID;
       QOrder.Open;
@@ -513,9 +515,10 @@ begin
         Amount := QOrder.FieldByName('TOTAL_AMOUNT').AsCurrency;
         OrderedAt := QOrder.FieldByName('ORDERED_AT').AsDateTime;
         StateText := '주문 진행중';
-        DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString +
-          '명 / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString) +
-          ' / 최초 ' + FormatDateTime('HH:NN', OrderedAt) +
+        DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString + '명';
+        if Trim(QOrder.FieldByName('ORDERER_NAME').AsString) <> '' then
+          DetailText := DetailText + ' / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString);
+        DetailText := DetailText + ' / 최초 ' + FormatDateTime('HH:NN', OrderedAt) +
           ' / 경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
         if FShowTableMenus then
         begin
@@ -526,8 +529,10 @@ begin
             'GROUP BY MENU_NAME ORDER BY MENU_NAME';
           QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
           QItems.Open;
-          DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString +
-            '명 / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString) + sLineBreak;
+          DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString + '명';
+          if Trim(QOrder.FieldByName('ORDERER_NAME').AsString) <> '' then
+            DetailText := DetailText + ' / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString);
+          DetailText := DetailText + sLineBreak;
           while not QItems.Eof do
           begin
             if Length(DetailText) > 0 then
