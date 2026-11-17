@@ -44,6 +44,8 @@ type
     FTableCombo: TComboBox;
     FTableIDs: TIntegerArray;
     FTableNameLabel: TLabel;
+    FCustomerCountEdit: TEdit;
+    FOrdererEdit: TEdit;
     FTablePanel: TPanel;
     FSalesPanel: TPanel;
     FTableCards: TScrollBox;
@@ -105,6 +107,7 @@ var
   Header, MainPanel, MenuArea, CartPanel, CartHeader, ButtonPanel: TPanel;
   TableHeader: TPanel;
   Lbl, TableTitle: TLabel;
+  CustomerCountLabel, OrdererLabel: TLabel;
   Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn: TButton;
 begin
   Caption := 'POS 판매';
@@ -218,7 +221,28 @@ begin
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Header;
-  FStatusLabel.Left := 315;
+  CustomerCountLabel := TLabel.Create(Self);
+  CustomerCountLabel.Parent := Header;
+  CustomerCountLabel.SetBounds(310, 12, 55, 18);
+  CustomerCountLabel.Caption := '인원';
+  CustomerCountLabel.Font.Name := Font.Name;
+  CustomerCountLabel.Font.Size := 9;
+  FCustomerCountEdit := TEdit.Create(Self);
+  FCustomerCountEdit.Parent := Header;
+  FCustomerCountEdit.SetBounds(310, 32, 58, 26);
+  FCustomerCountEdit.Text := '1';
+  FCustomerCountEdit.Alignment := taRightJustify;
+  FOrdererLabel := nil;
+  OrdererLabel := TLabel.Create(Self);
+  OrdererLabel.Parent := Header;
+  OrdererLabel.SetBounds(380, 12, 70, 18);
+  OrdererLabel.Caption := '주문자';
+  OrdererLabel.Font.Name := Font.Name;
+  OrdererLabel.Font.Size := 9;
+  FOrdererEdit := TEdit.Create(Self);
+  FOrdererEdit.Parent := Header;
+  FOrdererEdit.SetBounds(380, 32, 130, 26);
+  FStatusLabel.Left := 525;
   FStatusLabel.Top := 24;
   FStatusLabel.Caption := '주문할 메뉴를 선택하세요.';
   FStatusLabel.Font.Name := Font.Name;
@@ -476,7 +500,8 @@ begin
       DetailText := '새 주문을 시작할 수 있습니다.';
       QOrder.Close;
       QOrder.SQL.Text :=
-        'SELECT FIRST 1 ORDER_ID, TOTAL_AMOUNT, ORDERED_AT FROM POS_ORDER ' +
+        'SELECT FIRST 1 ORDER_ID, TOTAL_AMOUNT, ORDERED_AT, ' +
+        'CUSTOMER_COUNT, ORDERER_NAME FROM POS_ORDER ' +
         'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
         'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
         'ORDER BY ORDERED_AT';
@@ -489,7 +514,10 @@ begin
         Amount := QOrder.FieldByName('TOTAL_AMOUNT').AsCurrency;
         OrderedAt := QOrder.FieldByName('ORDERED_AT').AsDateTime;
         StateText := '주문 진행중';
-        DetailText := '최초 ' + FormatDateTime('HH:NN', OrderedAt) + ' / 경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
+        DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString +
+          '명 / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString) +
+          ' / 최초 ' + FormatDateTime('HH:NN', OrderedAt) +
+          ' / 경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
         if FShowTableMenus then
         begin
           QItems.Close;
@@ -595,6 +623,7 @@ end;
 procedure TfrmSales.TableCardClick(Sender: TObject);
 var
   TableID, I: Integer;
+  Q: TFDQuery;
 begin
   TableID := TControl(Sender).Tag;
   for I := 0 to FTableCombo.Items.Count - 1 do
@@ -608,6 +637,26 @@ begin
   SetLength(FLoadedOrderItemIDs, 0);
   FLoadedOrderID := 0;
   FLoadOrderButton.Caption := '주문내역';
+  FCustomerCountEdit.Text := '1';
+  FOrdererEdit.Clear;
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := dmDatabase.Connection;
+    Q.SQL.Text := 'SELECT FIRST 1 CUSTOMER_COUNT, ORDERER_NAME FROM POS_ORDER ' +
+      'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+      'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+      'ORDER BY ORDERED_AT DESC';
+    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := TableID;
+    Q.Open;
+    if not Q.IsEmpty then
+    begin
+      FCustomerCountEdit.Text := Q.FieldByName('CUSTOMER_COUNT').AsString;
+      FOrdererEdit.Text := Q.FieldByName('ORDERER_NAME').AsString;
+    end;
+  finally
+    Q.Free;
+  end;
   RefreshCart;
   UpdateTableStatus;
   FTablePanel.Visible := False;
@@ -1849,9 +1898,9 @@ begin
           FormatFloat('000000', OrderID);
         Q.SQL.Text := 'INSERT INTO POS_ORDER ' +
           '(ORDER_ID, STORE_ID, TABLE_ID, ORDER_NO, ORDER_TYPE, ORDER_STATUS, TOTAL_AMOUNT, ' +
-          'EMPLOYEE_ID, TERMINAL_ID, UPDATED_AT) ' +
+          'EMPLOYEE_ID, TERMINAL_ID, CUSTOMER_COUNT, ORDERER_NAME, UPDATED_AT) ' +
           'VALUES (:ORDER_ID, :STORE_ID, :TABLE_ID, :ORDER_NO, ''DINE_IN'', ''OPEN'', :TOTAL, ' +
-          ':EMPLOYEE_ID, :TERMINAL_ID, CURRENT_TIMESTAMP)';
+          ':EMPLOYEE_ID, :TERMINAL_ID, :CUSTOMER_COUNT, :ORDERER_NAME, CURRENT_TIMESTAMP)';
         Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
         Q.ParamByName('STORE_ID').AsInteger := FStoreID;
         Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
@@ -1859,6 +1908,8 @@ begin
         Q.ParamByName('TOTAL').AsCurrency := Total;
         Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
         Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
+        Q.ParamByName('CUSTOMER_COUNT').AsInteger := StrToIntDef(Trim(FCustomerCountEdit.Text), 1);
+        Q.ParamByName('ORDERER_NAME').AsString := Trim(FOrdererEdit.Text);
         Q.ExecSQL;
         HasKitchenChanges := True;
       end
@@ -1967,10 +2018,13 @@ begin
       end;
 
       Q.SQL.Text := 'UPDATE POS_ORDER SET TOTAL_AMOUNT=:TOTAL, ' +
+        'CUSTOMER_COUNT=:CUSTOMER_COUNT, ORDERER_NAME=:ORDERER_NAME, ' +
         'EMPLOYEE_ID=COALESCE(EMPLOYEE_ID,:EMPLOYEE_ID), ' +
         'TERMINAL_ID=COALESCE(TERMINAL_ID,:TERMINAL_ID), UPDATED_AT=CURRENT_TIMESTAMP ' +
         'WHERE STORE_ID=:STORE_ID AND ORDER_ID=:ORDER_ID';
       Q.ParamByName('TOTAL').AsCurrency := Total;
+      Q.ParamByName('CUSTOMER_COUNT').AsInteger := StrToIntDef(Trim(FCustomerCountEdit.Text), 1);
+      Q.ParamByName('ORDERER_NAME').AsString := Trim(FOrdererEdit.Text);
       Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
       Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
       Q.ParamByName('STORE_ID').AsInteger := FStoreID;
