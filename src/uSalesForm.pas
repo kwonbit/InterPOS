@@ -582,6 +582,8 @@ begin
       Break;
     end;
   SetLength(FCart, 0);
+  SetLength(FLoadedOrderItemIDs, 0);
+  FLoadedOrderID := 0;
   RefreshCart;
   UpdateTableStatus;
   FTablePanel.Visible := False;
@@ -674,6 +676,8 @@ begin
     if MessageDlg('저장하지 않은 상품이 있습니다. 취소하고 테이블 목록으로 이동할까요?',
       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
   SetLength(FCart, 0);
+  SetLength(FLoadedOrderItemIDs, 0);
+  FLoadedOrderID := 0;
   RefreshCart;
   LoadTables;
   FSalesPanel.Visible := False;
@@ -1016,7 +1020,8 @@ var
   I, N: Integer;
 begin
   for I := 0 to High(FCart) do
-    if (FCart[I].MenuID = AMenuID) and
+    if (not FCart[I].IsPersisted) and
+      (FCart[I].MenuID = AMenuID) and
       SameText(FCart[I].OptionText, AOptionText) then
     begin
       Inc(FCart[I].Quantity);
@@ -1695,18 +1700,8 @@ begin
         end;
 
         for I := 0 to High(FCart) do
-        begin
-          if FCart[I].IsPersisted then
-          begin
-            if FCart[I].Quantity <> FCart[I].OriginalQuantity then
-            begin
-              if not HasKitchenChanges then
-                HasKitchenChanges := True;
-            end;
-          end
-          else
+          if not FCart[I].IsPersisted then
             HasKitchenChanges := True;
-        end;
       end;
 
       if HasKitchenChanges then
@@ -1731,11 +1726,10 @@ begin
             if FCart[I].Quantity <> FCart[I].OriginalQuantity then
             begin
               Q.SQL.Text := 'UPDATE POS_ORDER_ITEM SET QUANTITY=:QUANTITY, ' +
-                'LINE_AMOUNT=:LINE_AMOUNT, KITCHEN_TICKET_ID=:TICKET_ID ' +
+                'LINE_AMOUNT=:LINE_AMOUNT ' +
                 'WHERE ORDER_ID=:ORDER_ID AND ORDER_ITEM_ID=:ITEM_ID';
               Q.ParamByName('QUANTITY').AsInteger := FCart[I].Quantity;
               Q.ParamByName('LINE_AMOUNT').AsCurrency := FCart[I].UnitPrice * FCart[I].Quantity;
-              Q.ParamByName('TICKET_ID').AsLargeInt := KitchenTicketID;
               Q.ParamByName('ORDER_ID').AsLargeInt := OrderID;
               Q.ParamByName('ITEM_ID').AsLargeInt := FCart[I].OrderItemID;
               Q.ExecSQL;
