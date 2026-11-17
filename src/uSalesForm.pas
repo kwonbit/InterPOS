@@ -133,7 +133,10 @@ begin
   MainPanel.Parent := Self;
   MainPanel.Align := alClient;
   MainPanel.BevelOuter := bvNone;
-  MainPanel.Padding.SetBounds(8, 8, 8, 8);
+  MainPanel.Padding.Left := 8;
+  MainPanel.Padding.Top := 8;
+  MainPanel.Padding.Right := 8;
+  MainPanel.Padding.Bottom := 8;
   MainPanel.Color := $00F1F3F5;
   MainPanel.ParentBackground := False;
 
