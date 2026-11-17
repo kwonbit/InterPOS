@@ -27,6 +27,8 @@ type
     class procedure TestPrint(const ASettings: TReceiptPrinterSettings); static;
     class procedure PrintReceipt(AConnection: TFDConnection;
       AStoreID: Integer; AOrderID: Int64); static;
+    class procedure PrintUnpaidTableOrders(AConnection: TFDConnection;
+      AStoreID, ATableID: Integer); static;
   end;
 
 implementation
@@ -279,6 +281,101 @@ begin
     AddText(Stream, '결제합계: ' + FormatCurr('#,##0', PaidAmount) + '원' + sLineBreak);
     AddText(Stream, '------------------------------------------' + sLineBreak);
     AddCommand(Stream, [$1B, $61, $01]);
+    AddText(Stream, '감사합니다.' + sLineBreak + sLineBreak);
+    AddCommand(Stream, [$1B, $64, $04, $1B, $6D]);
+
+    SetLength(Data, Stream.Size);
+    Stream.Position := 0;
+    if Stream.Size > 0 then Stream.ReadBuffer(Data[0], Stream.Size);
+  finally
+    Stream.Free;
+    Q.Free;
+  end;
+  SendBytes(Settings, Data);
+end;
+
+
+class procedure TReceiptPrinter.PrintUnpaidTableOrders(
+  AConnection: TFDConnection; AStoreID, ATableID: Integer);
+var
+  Q: TFDQuery;
+  Stream: TMemoryStream;
+  Data: TBytes;
+  Settings: TReceiptPrinterSettings;
+  StoreName, TableName: string;
+  TotalAmount: Currency;
+  ItemName, OptionText: string;
+  OrderCount: Integer;
+begin
+  Settings := LoadSettings;
+  Q := TFDQuery.Create(nil);
+  Stream := TMemoryStream.Create;
+  try
+    Q.Connection := AConnection;
+    Q.SQL.Text :=
+      'SELECT S.STORE_NAME, T.TABLE_NAME, COUNT(O.ORDER_ID) AS ORDER_COUNT, ' +
+      'SUM(O.TOTAL_AMOUNT) AS TOTAL_AMOUNT ' +
+      'FROM POS_ORDER O ' +
+      'JOIN STORE_INFO S ON S.STORE_ID=O.STORE_ID ' +
+      'LEFT JOIN POS_TABLE T ON T.TABLE_ID=O.TABLE_ID ' +
+      'WHERE O.STORE_ID=:STORE_ID AND O.TABLE_ID=:TABLE_ID ' +
+      'AND O.ORDER_TYPE=''DINE_IN'' AND O.ORDER_STATUS=''OPEN'' ' +
+      'GROUP BY S.STORE_NAME, T.TABLE_NAME';
+    Q.ParamByName('STORE_ID').AsInteger := AStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := ATableID;
+    Q.Open;
+    if Q.IsEmpty or (Q.FieldByName('ORDER_COUNT').AsInteger = 0) then
+      raise Exception.Create('선택한 테이블에 출력할 미결제 주문저장 내역이 없습니다.');
+
+    StoreName := Q.FieldByName('STORE_NAME').AsString;
+    TableName := Q.FieldByName('TABLE_NAME').AsString;
+    OrderCount := Q.FieldByName('ORDER_COUNT').AsInteger;
+    TotalAmount := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
+
+    AddCommand(Stream, [$1B, $40, $1B, $61, $01]);
+    AddText(Stream, StoreName + sLineBreak);
+    AddCommand(Stream, [$1B, $45, $01]);
+    AddText(Stream, '주문내역' + sLineBreak);
+    AddCommand(Stream, [$1B, $45, $00, $1B, $61, $00]);
+    AddText(Stream, '------------------------------------------' + sLineBreak);
+    AddText(Stream, '테이블: ' + TableName + sLineBreak);
+    AddText(Stream, '출력구분: 미결제 주문저장 내역' + sLineBreak);
+    AddText(Stream, '주문건수: ' + IntToStr(OrderCount) + '건' + sLineBreak);
+    AddText(Stream, '출력일시: ' + FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + sLineBreak);
+    AddText(Stream, '------------------------------------------' + sLineBreak);
+    Q.Close;
+
+    Q.SQL.Text :=
+      'SELECT I.MENU_NAME, I.UNIT_PRICE, I.QUANTITY, I.LINE_AMOUNT, ' +
+      'I.OPTION_TEXT, I.ORDER_ITEM_ID ' +
+      'FROM POS_ORDER O JOIN POS_ORDER_ITEM I ON I.ORDER_ID=O.ORDER_ID ' +
+      'WHERE O.STORE_ID=:STORE_ID AND O.TABLE_ID=:TABLE_ID ' +
+      'AND O.ORDER_TYPE=''DINE_IN'' AND O.ORDER_STATUS=''OPEN'' ' +
+      'ORDER BY O.ORDERED_AT, O.ORDER_ID, I.ORDER_ITEM_ID';
+    Q.ParamByName('STORE_ID').AsInteger := AStoreID;
+    Q.ParamByName('TABLE_ID').AsInteger := ATableID;
+    Q.Open;
+    while not Q.Eof do
+    begin
+      ItemName := Q.FieldByName('MENU_NAME').AsString;
+      OptionText := Q.FieldByName('OPTION_TEXT').AsString;
+      AddText(Stream, ItemName + sLineBreak);
+      if OptionText <> '' then AddText(Stream, '  ' + OptionText + sLineBreak);
+      AddText(Stream, '  ' + FormatCurr('#,##0', Q.FieldByName('UNIT_PRICE').AsCurrency) +
+        ' x ' + FormatCurr('#,##0.###', Q.FieldByName('QUANTITY').AsFloat) +
+        ' = ' + FormatCurr('#,##0', Q.FieldByName('LINE_AMOUNT').AsCurrency) + '원' +
+        sLineBreak);
+      Q.Next;
+    end;
+    Q.Close;
+
+    AddText(Stream, '------------------------------------------' + sLineBreak);
+    AddCommand(Stream, [$1B, $45, $01]);
+    AddText(Stream, '미결제 합계: ' + FormatCurr('#,##0', TotalAmount) + '원' + sLineBreak);
+    AddCommand(Stream, [$1B, $45, $00]);
+    AddText(Stream, '------------------------------------------' + sLineBreak);
+    AddCommand(Stream, [$1B, $61, $01]);
+    AddText(Stream, '※ 결제 영수증이 아닙니다.' + sLineBreak);
     AddText(Stream, '감사합니다.' + sLineBreak + sLineBreak);
     AddCommand(Stream, [$1B, $64, $04, $1B, $6D]);
 
