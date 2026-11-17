@@ -27,6 +27,7 @@ type
     Required: Boolean;
     MaxSelect: Integer;
     List: TCheckListBox;
+    OptionIDs: TIntegerArray;
   end;
 
   TfrmSales = class(TForm)
@@ -967,9 +968,12 @@ begin
       OptionQuery.Open;
       while not OptionQuery.Eof do
       begin
-        Groups[GroupCount].List.Items.AddObject(
-          OptionQuery.FieldByName('OPTION_NAME').AsString,
-          TObject(Pointer(NativeInt(OptionQuery.FieldByName('OPTION_ID').AsInteger))));
+        Groups[GroupCount].List.Items.Add(
+          OptionQuery.FieldByName('OPTION_NAME').AsString);
+        SetLength(Groups[GroupCount].OptionIDs,
+          Length(Groups[GroupCount].OptionIDs) + 1);
+        Groups[GroupCount].OptionIDs[High(Groups[GroupCount].OptionIDs)] :=
+          OptionQuery.FieldByName('OPTION_ID').AsInteger;
         OptionQuery.Next;
       end;
       Groups[GroupCount].List.Height := Max(28,
@@ -1029,7 +1033,7 @@ begin
       for J := 0 to Groups[I].List.Items.Count - 1 do
         if Groups[I].List.Checked[J] then
         begin
-          OptionID := NativeInt(Groups[I].List.Items.Objects[J]);
+          OptionID := Groups[I].OptionIDs[J];
           OptionName := Groups[I].List.Items[J];
           PriceQuery.Close;
           PriceQuery.SQL.Text :=
