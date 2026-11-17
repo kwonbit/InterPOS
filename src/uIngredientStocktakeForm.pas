@@ -20,6 +20,8 @@ type
     procedure LoadIngredients;
     procedure GridSetEditText(Sender: TObject; ACol, ARow: Integer;
       const Value: string);
+    procedure GridSelectCell(Sender: TObject; ACol, ARow: Integer;
+      var CanSelect: Boolean);
     procedure SaveClick(Sender: TObject);
     procedure HistoryClick(Sender: TObject);
     function NewQuery: TFDQuery;
@@ -95,7 +97,7 @@ begin
   FGrid.ColCount := 6;
   FGrid.RowCount := 2;
   FGrid.DefaultRowHeight := 28;
-  FGrid.Options := FGrid.Options + [goRowSelect, goColSizing, goEditing];
+  FGrid.Options := FGrid.Options + [goColSizing, goEditing];
   FGrid.Cells[0,0] := 'ID';
   FGrid.Cells[1,0] := '원재료명';
   FGrid.Cells[2,0] := '단위';
@@ -109,6 +111,7 @@ begin
   FGrid.ColWidths[4] := 170;
   FGrid.ColWidths[5] := 140;
   FGrid.OnSetEditText := GridSetEditText;
+  FGrid.OnSelectCell := GridSelectCell;
 
   P := TPanel.Create(Self);
   P.Parent := Self;
@@ -187,6 +190,12 @@ begin
   end;
   if not TryStrToFloat(FGrid.Cells[3,ARow], BookQty) then Exit;
   FGrid.Cells[5,ARow] := FormatFloat('+0.###;-0.###;0', Counted - BookQty);
+end;
+
+procedure TfrmIngredientStocktake.GridSelectCell(Sender: TObject;
+  ACol, ARow: Integer; var CanSelect: Boolean);
+begin
+  CanSelect := (ARow = 0) or (ACol = 4);
 end;
 
 procedure TfrmIngredientStocktake.SaveClick(Sender: TObject);
