@@ -1303,6 +1303,7 @@ var
   IngredientName, IngredientUnit: string;
   IngredientQty, IngredientStockBefore, IngredientStockAfter,
     IngredientUnitCost: Double;
+  IngredientShortageWarnings: string;
   DialogForm: TForm;
   MethodGroup: TRadioGroup;
   AmountLabel, ReceivedLabel, ChangeLabel: TLabel;
@@ -1312,6 +1313,7 @@ var
   I, J: Integer;
   CartHasChanges, ItemFound: Boolean;
 begin
+  IngredientShortageWarnings := '';
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
 
@@ -1597,10 +1599,16 @@ begin
         IngredientStockBefore := QStock.FieldByName('STOCK_QTY').AsFloat;
         IngredientUnitCost := QStock.FieldByName('AVG_UNIT_COST').AsFloat;
         if IngredientStockBefore < IngredientQty then
-          raise Exception.CreateFmt(
-            '원재료 재고가 부족하여 결제할 수 없습니다. 원재료: %s / 현재고: %s %s / 필요량: %s %s',
-            [IngredientName, FormatFloat('#,##0.###', IngredientStockBefore),
-             IngredientUnit, FormatFloat('#,##0.###', IngredientQty), IngredientUnit]);
+        begin
+          if IngredientShortageWarnings <> '' then
+            IngredientShortageWarnings := IngredientShortageWarnings + sLineBreak;
+          IngredientShortageWarnings := IngredientShortageWarnings +
+            Format('원재료: %s / 현재고: %s %s / 필요량: %s %s / 결제 후 재고: %s %s',
+              [IngredientName, FormatFloat('#,##0.###', IngredientStockBefore),
+               IngredientUnit, FormatFloat('#,##0.###', IngredientQty), IngredientUnit,
+               FormatFloat('#,##0.###', IngredientStockBefore - IngredientQty), IngredientUnit]);
+        end;
+        // 재고가 부족해도 판매를 막지 않고 실제 사용량만큼 차감하여 음수 재고로 기록한다.
         IngredientStockAfter := IngredientStockBefore - IngredientQty;
         QStock.Close;
 
@@ -1671,6 +1679,11 @@ begin
   end;
 
   UpdateTableStatus;
+  if IngredientShortageWarnings <> '' then
+    MessageDlg('원재료 재고가 부족하지만 결제는 정상 완료되었습니다.' +
+      sLineBreak + sLineBreak + IngredientShortageWarnings +
+      sLineBreak + sLineBreak + '재고관리에서 원재료 입고를 등록해 주세요.',
+      mtWarning, [mbOK], 0);
   try
     TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderID);
   except
