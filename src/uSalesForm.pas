@@ -1026,7 +1026,7 @@ begin
       for J := 0 to Groups[I].List.Items.Count - 1 do
         if Groups[I].List.Checked[J] then
         begin
-          OptionID := NativeInt(Pointer(Groups[I].List.Items.Objects[J]));
+          OptionID := NativeInt(Groups[I].List.Items.Objects[J]);
           OptionName := Groups[I].List.Items[J];
           PriceQuery.Close;
           PriceQuery.SQL.Text :=
@@ -1239,7 +1239,7 @@ function TfrmSales.SelectedTableID: Integer;
 begin
   Result := 0;
   if FTableCombo.ItemIndex >= 0 then
-    Result := NativeInt(Pointer(FTableCombo.Items.Objects[FTableCombo.ItemIndex]));
+    Result := NativeInt(FTableCombo.Items.Objects[FTableCombo.ItemIndex]);
 end;
 
 function TfrmSales.NextSequenceValue(const ASequenceName: string): Int64;
