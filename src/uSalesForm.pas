@@ -450,7 +450,7 @@ begin
         Amount := QOrder.FieldByName('TOTAL_AMOUNT').AsCurrency;
         OrderedAt := QOrder.FieldByName('ORDERED_AT').AsDateTime;
         StateText := '주문 진행중';
-        DetailText := '경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
+        DetailText := '최초 ' + FormatDateTime('HH:NN', OrderedAt) + ' / 경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
         if FShowTableMenus then
         begin
           QItems.Close;
@@ -569,6 +569,7 @@ begin
   UpdateTableStatus;
   FTablePanel.Visible := False;
   FSalesPanel.Visible := True;
+  FSalesPanel.BringToFront;
 end;
 
 procedure TfrmSales.TableDisplayToggleClick(Sender: TObject);
@@ -591,6 +592,7 @@ begin
   LoadTables;
   FSalesPanel.Visible := False;
   FTablePanel.Visible := True;
+  FTablePanel.BringToFront;
 end;
 
 procedure TfrmSales.TableChanged(Sender: TObject);
