@@ -24,11 +24,16 @@ type
     FSelectedIngredientID: Int64;
     FSelectedRecipeID: Int64;
     FSelectedIngredientUnit: string;
+    FLowStockOnly: TCheckBox;
+    FStockSummaryLabel: TLabel;
     procedure BuildUI;
     procedure RefreshIngredients;
     procedure RefreshMenus;
     procedure RefreshRecipes;
     procedure IngredientGridClick(Sender: TObject);
+    procedure IngredientGridDrawCell(Sender: TObject; ACol, ARow: Integer;
+      Rect: TRect; State: TGridDrawState);
+    procedure LowStockClick(Sender: TObject);
     procedure MenuChanged(Sender: TObject);
     procedure RecipeGridClick(Sender: TObject);
     procedure ClearIngredient;
@@ -75,7 +80,7 @@ end;
 
 procedure TfrmIngredientRecipe.BuildUI;
 var
-  Header, LeftPanel, RightPanel, EntryPanel, RecipeEntry: TPanel;
+  Header, LeftPanel, RightPanel, EntryPanel, RecipeEntry, StockFilterPanel: TPanel;
   L: TLabel;
   B: TButton;
 begin
@@ -170,12 +175,29 @@ begin
   B.Caption := '사용 중지';
   B.OnClick := DisableIngredientClick;
 
+  StockFilterPanel := TPanel.Create(Self);
+  StockFilterPanel.Parent := LeftPanel;
+  StockFilterPanel.Align := alTop;
+  StockFilterPanel.Height := 38;
+  StockFilterPanel.BevelOuter := bvNone;
+
+  FLowStockOnly := TCheckBox.Create(Self);
+  FLowStockOnly.Parent := StockFilterPanel;
+  FLowStockOnly.SetBounds(10, 7, 180, 24);
+  FLowStockOnly.Caption := '부족 원재료만 보기';
+  FLowStockOnly.OnClick := LowStockClick;
+
+  FStockSummaryLabel := TLabel.Create(Self);
+  FStockSummaryLabel.Parent := StockFilterPanel;
+  FStockSummaryLabel.SetBounds(195, 9, 360, 22);
+  FStockSummaryLabel.Caption := '재고 현황을 조회합니다.';
+
   FIngredientGrid := TStringGrid.Create(Self);
   FIngredientGrid.Parent := LeftPanel;
   FIngredientGrid.Align := alClient;
   FIngredientGrid.FixedRows := 1;
   FIngredientGrid.FixedCols := 0;
-  FIngredientGrid.ColCount := 6;
+  FIngredientGrid.ColCount := 7;
   FIngredientGrid.RowCount := 2;
   FIngredientGrid.DefaultRowHeight := 27;
   FIngredientGrid.Options := FIngredientGrid.Options + [goRowSelect, goColSizing];
@@ -185,13 +207,16 @@ begin
   FIngredientGrid.Cells[3,0] := '현재고';
   FIngredientGrid.Cells[4,0] := '안전재고';
   FIngredientGrid.Cells[5,0] := '평균단가';
+  FIngredientGrid.Cells[6,0] := '재고상태';
   FIngredientGrid.ColWidths[0] := 0;
-  FIngredientGrid.ColWidths[1] := 180;
-  FIngredientGrid.ColWidths[2] := 55;
-  FIngredientGrid.ColWidths[3] := 90;
-  FIngredientGrid.ColWidths[4] := 90;
-  FIngredientGrid.ColWidths[5] := 100;
+  FIngredientGrid.ColWidths[1] := 145;
+  FIngredientGrid.ColWidths[2] := 45;
+  FIngredientGrid.ColWidths[3] := 75;
+  FIngredientGrid.ColWidths[4] := 75;
+  FIngredientGrid.ColWidths[5] := 85;
+  FIngredientGrid.ColWidths[6] := 105;
   FIngredientGrid.OnClick := IngredientGridClick;
+  FIngredientGrid.OnDrawCell := IngredientGridDrawCell;
 
   L := TLabel.Create(Self);
   L.Parent := RightPanel;
@@ -311,7 +336,10 @@ end;
 procedure TfrmIngredientRecipe.RefreshIngredients;
 var
   Q: TFDQuery;
-  R: Integer;
+  R, TotalCount, LowCount, NegativeCount, NormalCount: Integer;
+  StockQty, LowQty: Double;
+  StockStatus: string;
+  ShowRow: Boolean;
 begin
   Q := NewIngredientQuery;
   try
@@ -320,26 +348,113 @@ begin
       'WHERE STORE_ID=:STORE_ID AND ACTIVE_YN=''Y'' ORDER BY INGREDIENT_NAME';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.Open;
-    FIngredientGrid.RowCount := Max(2, Q.RecordCount + 1);
+    FIngredientGrid.RowCount := 2;
     FIngredientCombo.Items.Clear;
     R := 1;
+    TotalCount := 0;
+    LowCount := 0;
+    NegativeCount := 0;
+    NormalCount := 0;
     while not Q.Eof do
     begin
-      FIngredientGrid.Cells[0,R] := Q.FieldByName('INGREDIENT_ID').AsString;
-      FIngredientGrid.Cells[1,R] := Q.FieldByName('INGREDIENT_NAME').AsString;
-      FIngredientGrid.Cells[2,R] := Q.FieldByName('UNIT_CODE').AsString;
-      FIngredientGrid.Cells[3,R] := FormatFloat('#,##0.###', Q.FieldByName('STOCK_QTY').AsFloat);
-      FIngredientGrid.Cells[4,R] := FormatFloat('#,##0.###', Q.FieldByName('LOW_STOCK_QTY').AsFloat);
-      FIngredientGrid.Cells[5,R] := FormatCurr('#,##0.0000', Q.FieldByName('AVG_UNIT_COST').AsCurrency);
+      Inc(TotalCount);
+      StockQty := Q.FieldByName('STOCK_QTY').AsFloat;
+      LowQty := Q.FieldByName('LOW_STOCK_QTY').AsFloat;
+
+      if StockQty < 0 then
+      begin
+        StockStatus := '음수 재고';
+        Inc(NegativeCount);
+        Inc(LowCount);
+      end
+      else if (LowQty > 0) and (StockQty <= LowQty) then
+      begin
+        StockStatus := '안전재고 부족';
+        Inc(LowCount);
+      end
+      else
+      begin
+        StockStatus := '정상';
+        Inc(NormalCount);
+      end;
+
       FIngredientCombo.Items.Add(Q.FieldByName('INGREDIENT_ID').AsString + ' | ' +
         Q.FieldByName('INGREDIENT_NAME').AsString);
-      Inc(R);
+
+      ShowRow := not FLowStockOnly.Checked or (StockStatus <> '정상');
+      if ShowRow then
+      begin
+        if R >= FIngredientGrid.RowCount then
+          FIngredientGrid.RowCount := R + 1;
+        FIngredientGrid.Cells[0,R] := Q.FieldByName('INGREDIENT_ID').AsString;
+        FIngredientGrid.Cells[1,R] := Q.FieldByName('INGREDIENT_NAME').AsString;
+        FIngredientGrid.Cells[2,R] := Q.FieldByName('UNIT_CODE').AsString;
+        FIngredientGrid.Cells[3,R] := FormatFloat('#,##0.###', StockQty);
+        FIngredientGrid.Cells[4,R] := FormatFloat('#,##0.###', LowQty);
+        FIngredientGrid.Cells[5,R] := FormatCurr('#,##0.0000', Q.FieldByName('AVG_UNIT_COST').AsCurrency);
+        FIngredientGrid.Cells[6,R] := StockStatus;
+        Inc(R);
+      end;
       Q.Next;
     end;
+
+    FIngredientGrid.RowCount := Max(2, R);
     if FIngredientCombo.Items.Count > 0 then FIngredientCombo.ItemIndex := 0;
-    if R = 1 then FIngredientGrid.Cells[1,1] := '등록된 원재료가 없습니다.';
+    if TotalCount = 0 then
+      FStockSummaryLabel.Caption := '등록 원재료 0종'
+    else
+      FStockSummaryLabel.Caption := Format(
+        '전체 %d종  |  정상 %d종  |  부족 %d종  |  음수 %d종',
+        [TotalCount, NormalCount, LowCount, NegativeCount]);
+
+    if R = 1 then
+    begin
+      if TotalCount = 0 then
+        FIngredientGrid.Cells[1,1] := '등록된 원재료가 없습니다.'
+      else
+        FIngredientGrid.Cells[1,1] := '조건에 맞는 원재료가 없습니다.';
+    end;
   finally
     Q.Free;
+  end;
+  FIngredientGrid.Invalidate;
+end;
+
+procedure TfrmIngredientRecipe.LowStockClick(Sender: TObject);
+begin
+  RefreshIngredients;
+end;
+
+procedure TfrmIngredientRecipe.IngredientGridDrawCell(Sender: TObject;
+  ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
+var
+  CellText: string;
+  TextY: Integer;
+begin
+  with FIngredientGrid.Canvas do
+  begin
+    if ARow = 0 then
+      Brush.Color := clBtnFace
+    else if gdSelected in State then
+      Brush.Color := clHighlight
+    else if SameText(FIngredientGrid.Cells[6, ARow], '음수 재고') then
+      Brush.Color := $00D8D8FF
+    else if SameText(FIngredientGrid.Cells[6, ARow], '안전재고 부족') then
+      Brush.Color := $00D9EEFF
+    else
+      Brush.Color := clWindow;
+    FillRect(Rect);
+
+    if (ARow > 0) and (gdSelected in State) then
+      Font.Color := clHighlightText
+    else if (ARow > 0) and (FIngredientGrid.Cells[6, ARow] <> '정상') then
+      Font.Color := clMaroon
+    else
+      Font.Color := clWindowText;
+
+    CellText := FIngredientGrid.Cells[ACol, ARow];
+    TextY := Rect.Top + (Rect.Height - TextHeight(CellText)) div 2;
+    TextRect(Rect, Rect.Left + 4, TextY, CellText);
   end;
 end;
 
