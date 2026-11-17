@@ -6,7 +6,7 @@ uses
   System.SysUtils, System.Classes, System.DateUtils, System.Math, Data.DB,
   FireDAC.Comp.Client,
   Vcl.Forms, Vcl.Controls, Vcl.Graphics, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.Grids, Vcl.ComCtrls, Vcl.Dialogs;
+  Vcl.Grids, Vcl.ComCtrls, Vcl.Dialogs, System.UITypes;
 
 type
   TfrmFinancialSummary = class(TForm)
