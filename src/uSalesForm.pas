@@ -232,7 +232,6 @@ begin
   FCustomerCountEdit.SetBounds(310, 32, 58, 26);
   FCustomerCountEdit.Text := '1';
   FCustomerCountEdit.Alignment := taRightJustify;
-  FOrdererLabel := nil;
   OrdererLabel := TLabel.Create(Self);
   OrdererLabel.Parent := Header;
   OrdererLabel.SetBounds(380, 12, 70, 18);
@@ -527,15 +526,17 @@ begin
             'GROUP BY MENU_NAME ORDER BY MENU_NAME';
           QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
           QItems.Open;
-          DetailText := '';
+          DetailText := '인원 ' + QOrder.FieldByName('CUSTOMER_COUNT').AsString +
+            '명 / ' + Trim(QOrder.FieldByName('ORDERER_NAME').AsString) + sLineBreak;
           while not QItems.Eof do
           begin
-            if DetailText <> '' then DetailText := DetailText + ' / ';
+            if Length(DetailText) > 0 then
+              if DetailText[Length(DetailText)] <> #10 then DetailText := DetailText + ' / ';
             DetailText := DetailText + QItems.FieldByName('MENU_NAME').AsString +
               ' ' + QItems.FieldByName('ITEM_QTY').AsString;
             QItems.Next;
           end;
-          if DetailText = '' then DetailText := '주문 상품 없음';
+          if Trim(DetailText) = '' then DetailText := '주문 상품 없음';
         end;
       end;
 
@@ -591,6 +592,7 @@ begin
       DetailLabel.Caption := DetailText;
       DetailLabel.Font.Name := Font.Name;
       DetailLabel.Font.Size := 8;
+      DetailLabel.WordWrap := True;
       DetailLabel.Font.Color := clGrayText;
       DetailLabel.Tag := TableID;
       DetailLabel.Cursor := crHandPoint;
@@ -1839,8 +1841,12 @@ var
   Q: TFDQuery;
   I, J: Integer;
   Total, ExistingTotal: Currency;
+  CustomerCount: Integer;
   IsExistingOrder, HasKitchenChanges, ItemFound: Boolean;
 begin
+  CustomerCount := StrToIntDef(Trim(FCustomerCountEdit.Text), 0);
+  if CustomerCount < 1 then
+    raise Exception.Create('방문 인원은 1명 이상 입력해 주세요.');
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
   if Length(FCart) = 0 then
@@ -1908,7 +1914,7 @@ begin
         Q.ParamByName('TOTAL').AsCurrency := Total;
         Q.ParamByName('EMPLOYEE_ID').AsInteger := FEmployeeID;
         Q.ParamByName('TERMINAL_ID').AsInteger := FTerminalID;
-        Q.ParamByName('CUSTOMER_COUNT').AsInteger := StrToIntDef(Trim(FCustomerCountEdit.Text), 1);
+        Q.ParamByName('CUSTOMER_COUNT').AsInteger := CustomerCount;
         Q.ParamByName('ORDERER_NAME').AsString := Trim(FOrdererEdit.Text);
         Q.ExecSQL;
         HasKitchenChanges := True;
