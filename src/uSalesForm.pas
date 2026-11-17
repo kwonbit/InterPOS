@@ -33,6 +33,10 @@ type
     FEmployeeID: Integer;
     FCart: array of TCartItem;
     FTableCombo: TComboBox;
+    FTablePanel: TPanel;
+    FSalesPanel: TPanel;
+    FTableCards: TScrollBox;
+    FShowTableMenus: Boolean;
     FCategoryPanel: TScrollBox;
     FMenuPanel: TScrollBox;
     FCartGrid: TStringGrid;
@@ -40,6 +44,9 @@ type
     FStatusLabel: TLabel;
   FPaymentButton: TButton;
     procedure LoadTables;
+    procedure TableCardClick(Sender: TObject);
+    procedure TableDisplayToggleClick(Sender: TObject);
+    procedure BackToTablesClick(Sender: TObject);
     procedure LoadCategories;
     procedure LoadMenus(ACategoryID: Integer);
     procedure AddMenuClick(Sender: TObject);
@@ -80,8 +87,9 @@ uses
 procedure TfrmSales.FormCreate(Sender: TObject);
 var
   Header, MainPanel, MenuArea, CartPanel, CartHeader, ButtonPanel: TPanel;
-  Lbl: TLabel;
-  Btn, PrinterBtn, ReprintBtn: TButton;
+  TableHeader: TPanel;
+  Lbl, TableTitle: TLabel;
+  Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn: TButton;
 begin
   Caption := 'POS 판매';
   Font.Name := '맑은 고딕';
@@ -92,9 +100,69 @@ begin
   Constraints.MinHeight := 680;
   Position := poScreenCenter;
   Color := $00F1F3F5;
+  FShowTableMenus := False;
+
+  { 후불제 매장의 첫 화면은 테이블 현황 화면이다. }
+  FTablePanel := TPanel.Create(Self);
+  FTablePanel.Parent := Self;
+  FTablePanel.Align := alClient;
+  FTablePanel.BevelOuter := bvNone;
+  FTablePanel.Color := $00F1F3F5;
+  FTablePanel.ParentBackground := False;
+
+  TableHeader := TPanel.Create(Self);
+  TableHeader.Parent := FTablePanel;
+  TableHeader.Align := alTop;
+  TableHeader.Height := 76;
+  TableHeader.BevelOuter := bvNone;
+  TableHeader.Color := clWhite;
+  TableHeader.ParentBackground := False;
+
+  TableTitle := TLabel.Create(Self);
+  TableTitle.Parent := TableHeader;
+  TableTitle.Left := 22;
+  TableTitle.Top := 13;
+  TableTitle.Caption := '테이블 선택';
+  TableTitle.Font.Name := Font.Name;
+  TableTitle.Font.Size := 17;
+  TableTitle.Font.Style := [fsBold];
+
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := TableHeader;
+  Lbl.Left := 24;
+  Lbl.Top := 44;
+  Lbl.Caption := '테이블을 선택하면 주문 화면으로 이동합니다.';
+  Lbl.Font.Name := Font.Name;
+  Lbl.Font.Size := 9;
+  Lbl.Font.Color := clGrayText;
+
+  TableDisplayBtn := TButton.Create(Self);
+  TableDisplayBtn.Parent := TableHeader;
+  TableDisplayBtn.Left := 1040;
+  TableDisplayBtn.Top := 18;
+  TableDisplayBtn.Width := 150;
+  TableDisplayBtn.Height := 40;
+  TableDisplayBtn.Caption := '메뉴표기';
+  TableDisplayBtn.Font.Name := Font.Name;
+  TableDisplayBtn.OnClick := TableDisplayToggleClick;
+
+  FTableCards := TScrollBox.Create(Self);
+  FTableCards.Parent := FTablePanel;
+  FTableCards.Align := alClient;
+  FTableCards.BorderStyle := bsNone;
+  FTableCards.Color := $00F1F3F5;
+  FTableCards.HorzScrollBar.Visible := False;
+
+  FSalesPanel := TPanel.Create(Self);
+  FSalesPanel.Parent := Self;
+  FSalesPanel.Align := alClient;
+  FSalesPanel.BevelOuter := bvNone;
+  FSalesPanel.Color := $00F1F3F5;
+  FSalesPanel.ParentBackground := False;
+  FSalesPanel.Visible := False;
 
   Header := TPanel.Create(Self);
-  Header.Parent := Self;
+  Header.Parent := FSalesPanel;
   Header.Align := alTop;
   Header.Height := 66;
   Header.BevelOuter := bvNone;
@@ -120,6 +188,7 @@ begin
   FTableCombo.Font.Name := Font.Name;
   FTableCombo.Font.Size := 11;
   FTableCombo.OnChange := TableChanged;
+  FTableCombo.Visible := False;
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Header;
@@ -129,8 +198,18 @@ begin
   FStatusLabel.Font.Name := Font.Name;
   FStatusLabel.Font.Size := 10;
 
+  BackBtn := TButton.Create(Self);
+  BackBtn.Parent := Header;
+  BackBtn.Left := 1080;
+  BackBtn.Top := 14;
+  BackBtn.Width := 150;
+  BackBtn.Height := 38;
+  BackBtn.Caption := '테이블 목록';
+  BackBtn.Font.Name := Font.Name;
+  BackBtn.OnClick := BackToTablesClick;
+
   MainPanel := TPanel.Create(Self);
-  MainPanel.Parent := Self;
+  MainPanel.Parent := FSalesPanel;
   MainPanel.Align := alClient;
   MainPanel.BevelOuter := bvNone;
   MainPanel.Padding.Left := 8;
@@ -317,28 +396,201 @@ end;
 
 procedure TfrmSales.LoadTables;
 var
-  Q: TFDQuery;
+  Q, QOrder, QItems: TFDQuery;
+  Card: TPanel;
+  NameLabel, StateLabel, AmountLabel, DetailLabel: TLabel;
+  TableID, OrderID, X, Y, Cols, ColIndex: Integer;
+  TableName, StateText, DetailText: string;
+  Amount: Currency;
+  OrderedAt: TDateTime;
 begin
   FTableCombo.Items.Clear;
+  while FTableCards.ControlCount > 0 do
+    FTableCards.Controls[0].Free;
+
   Q := TFDQuery.Create(nil);
+  QOrder := TFDQuery.Create(nil);
+  QItems := TFDQuery.Create(nil);
   try
     Q.Connection := dmDatabase.Connection;
+    QOrder.Connection := dmDatabase.Connection;
+    QItems.Connection := dmDatabase.Connection;
     Q.SQL.Text := 'SELECT TABLE_ID, TABLE_NAME FROM POS_TABLE ' +
       'WHERE STORE_ID=:STORE_ID AND ACTIVE_YN=''Y'' ORDER BY DISPLAY_ORDER, TABLE_ID';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.Open;
+
+    X := 14;
+    Y := 14;
+    Cols := Max(1, (Width - 70) div 236);
+    ColIndex := 0;
     while not Q.Eof do
     begin
-      FTableCombo.Items.AddObject(Q.FieldByName('TABLE_NAME').AsString,
-        TObject(Pointer(NativeInt(Q.FieldByName('TABLE_ID').AsInteger))));
+      TableID := Q.FieldByName('TABLE_ID').AsInteger;
+      TableName := Q.FieldByName('TABLE_NAME').AsString;
+      FTableCombo.Items.AddObject(TableName,
+        TObject(Pointer(NativeInt(TableID))));
+
+      OrderID := 0;
+      Amount := 0;
+      StateText := '주문 대기';
+      DetailText := '새 주문을 시작할 수 있습니다.';
+      QOrder.Close;
+      QOrder.SQL.Text :=
+        'SELECT FIRST 1 ORDER_ID, TOTAL_AMOUNT, ORDERED_AT FROM POS_ORDER ' +
+        'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID ' +
+        'AND ORDER_TYPE=''DINE_IN'' AND ORDER_STATUS=''OPEN'' ' +
+        'ORDER BY ORDERED_AT';
+      QOrder.ParamByName('STORE_ID').AsInteger := FStoreID;
+      QOrder.ParamByName('TABLE_ID').AsInteger := TableID;
+      QOrder.Open;
+      if not QOrder.IsEmpty then
+      begin
+        OrderID := QOrder.FieldByName('ORDER_ID').AsLargeInt;
+        Amount := QOrder.FieldByName('TOTAL_AMOUNT').AsCurrency;
+        OrderedAt := QOrder.FieldByName('ORDERED_AT').AsDateTime;
+        StateText := '주문 진행중';
+        DetailText := '경과 ' + IntToStr(MinutesBetween(Now, OrderedAt)) + '분';
+        if FShowTableMenus then
+        begin
+          QItems.Close;
+          QItems.SQL.Text :=
+            'SELECT MENU_NAME, SUM(QUANTITY) AS ITEM_QTY ' +
+            'FROM POS_ORDER_ITEM WHERE ORDER_ID=:ORDER_ID ' +
+            'GROUP BY MENU_NAME ORDER BY MENU_NAME';
+          QItems.ParamByName('ORDER_ID').AsLargeInt := OrderID;
+          QItems.Open;
+          DetailText := '';
+          while not QItems.Eof do
+          begin
+            if DetailText <> '' then DetailText := DetailText + ' / ';
+            DetailText := DetailText + QItems.FieldByName('MENU_NAME').AsString +
+              ' ' + QItems.FieldByName('ITEM_QTY').AsString;
+            QItems.Next;
+          end;
+          if DetailText = '' then DetailText := '주문 상품 없음';
+        end;
+      end;
+
+      Card := TPanel.Create(FTableCards);
+      Card.Parent := FTableCards;
+      Card.SetBounds(X, Y, 218, 146);
+      Card.BevelOuter := bvRaised;
+      Card.ParentBackground := False;
+      if OrderID > 0 then Card.Color := $00FCE8D8 else Card.Color := clWhite;
+      Card.Tag := TableID;
+      Card.Cursor := crHandPoint;
+      Card.OnClick := TableCardClick;
+
+      NameLabel := TLabel.Create(Card);
+      NameLabel.Parent := Card;
+      NameLabel.SetBounds(14, 12, 190, 30);
+      NameLabel.Caption := TableName;
+      NameLabel.Font.Name := Font.Name;
+      NameLabel.Font.Size := 15;
+      NameLabel.Font.Style := [fsBold];
+      NameLabel.Tag := TableID;
+      NameLabel.Cursor := crHandPoint;
+      NameLabel.OnClick := TableCardClick;
+
+      StateLabel := TLabel.Create(Card);
+      StateLabel.Parent := Card;
+      StateLabel.SetBounds(14, 49, 190, 22);
+      StateLabel.Caption := StateText;
+      StateLabel.Font.Name := Font.Name;
+      StateLabel.Font.Size := 10;
+      StateLabel.Font.Style := [fsBold];
+      if OrderID > 0 then StateLabel.Font.Color := clMaroon
+      else StateLabel.Font.Color := clGreen;
+      StateLabel.Tag := TableID;
+      StateLabel.Cursor := crHandPoint;
+      StateLabel.OnClick := TableCardClick;
+
+      AmountLabel := TLabel.Create(Card);
+      AmountLabel.Parent := Card;
+      AmountLabel.SetBounds(14, 77, 190, 24);
+      if OrderID > 0 then AmountLabel.Caption := FormatCurr('#,##0', Amount) + '원'
+      else AmountLabel.Caption := '주문 전';
+      AmountLabel.Font.Name := Font.Name;
+      AmountLabel.Font.Size := 13;
+      AmountLabel.Font.Style := [fsBold];
+      AmountLabel.Tag := TableID;
+      AmountLabel.Cursor := crHandPoint;
+      AmountLabel.OnClick := TableCardClick;
+
+      DetailLabel := TLabel.Create(Card);
+      DetailLabel.Parent := Card;
+      DetailLabel.SetBounds(14, 110, 190, 28);
+      DetailLabel.Caption := DetailText;
+      DetailLabel.Font.Name := Font.Name;
+      DetailLabel.Font.Size := 8;
+      DetailLabel.Font.Color := clGrayText;
+      DetailLabel.Tag := TableID;
+      DetailLabel.Cursor := crHandPoint;
+      DetailLabel.OnClick := TableCardClick;
+
+      Inc(ColIndex);
+      if ColIndex >= Cols then
+      begin
+        ColIndex := 0;
+        X := 14;
+        Inc(Y, 158);
+      end
+      else
+        Inc(X, 232);
       Q.Next;
     end;
   finally
+    QItems.Free;
+    QOrder.Free;
     Q.Free;
   end;
+
   if FTableCombo.Items.Count > 0 then
-    FTableCombo.ItemIndex := 0;
+  begin
+    if FTableCombo.ItemIndex < 0 then FTableCombo.ItemIndex := 0;
+  end;
   UpdateTableStatus;
+end;
+
+procedure TfrmSales.TableCardClick(Sender: TObject);
+var
+  TableID, I: Integer;
+begin
+  TableID := TControl(Sender).Tag;
+  for I := 0 to FTableCombo.Items.Count - 1 do
+    if NativeInt(FTableCombo.Items.Objects[I]) = TableID then
+    begin
+      FTableCombo.ItemIndex := I;
+      Break;
+    end;
+  SetLength(FCart, 0);
+  RefreshCart;
+  UpdateTableStatus;
+  FTablePanel.Visible := False;
+  FSalesPanel.Visible := True;
+end;
+
+procedure TfrmSales.TableDisplayToggleClick(Sender: TObject);
+begin
+  FShowTableMenus := not FShowTableMenus;
+  if FShowTableMenus then
+    TButton(Sender).Caption := '메뉴 숨김'
+  else
+    TButton(Sender).Caption := '메뉴표기';
+  LoadTables;
+end;
+
+procedure TfrmSales.BackToTablesClick(Sender: TObject);
+begin
+  if Length(FCart) > 0 then
+    if MessageDlg('저장하지 않은 상품이 있습니다. 취소하고 테이블 목록으로 이동할까요?',
+      mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+  SetLength(FCart, 0);
+  RefreshCart;
+  LoadTables;
+  FSalesPanel.Visible := False;
+  FTablePanel.Visible := True;
 end;
 
 procedure TfrmSales.TableChanged(Sender: TObject);
