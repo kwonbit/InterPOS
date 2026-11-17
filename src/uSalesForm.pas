@@ -369,7 +369,7 @@ begin
   ReprintBtn.Top := 59;
   ReprintBtn.Width := 108;
   ReprintBtn.Height := 42;
-  ReprintBtn.Caption := '영수증 재출력';
+  ReprintBtn.Caption := '주문내역 재출력';
   ReprintBtn.Font.Name := Font.Name;
   ReprintBtn.OnClick := ReprintReceiptClick;
 
@@ -1257,48 +1257,21 @@ begin
 end;
 
 procedure TfrmSales.ReprintReceiptClick(Sender: TObject);
-var
-  Q: TFDQuery;
-  OrderIDs: TArray<Int64>;
-  I, N: Integer;
 begin
   try
     if SelectedTableID = 0 then
       raise Exception.Create('먼저 테이블을 선택해 주세요.');
-    Q := TFDQuery.Create(nil);
-    try
-      Q.Connection := dmDatabase.Connection;
-      Q.SQL.Text := 'SELECT ORDER_ID FROM POS_ORDER ' +
-        'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID AND ORDER_STATUS=''PAID'' ' +
-        'ORDER BY ORDERED_AT, ORDER_ID';
-      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-      Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
-      Q.Open;
-      SetLength(OrderIDs, 0);
-      while not Q.Eof do
-      begin
-        N := Length(OrderIDs);
-        SetLength(OrderIDs, N + 1);
-        OrderIDs[N] := Q.FieldByName('ORDER_ID').AsLargeInt;
-        Q.Next;
-      end;
-    finally
-      Q.Free;
-    end;
-    if Length(OrderIDs) = 0 then
-      raise Exception.Create('선택한 테이블에 재출력할 결제 완료 주문이 없습니다.');
 
-    for I := 0 to High(OrderIDs) do
-      TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderIDs[I]);
-    MessageDlg(Format('%d건의 결제 완료 주문 영수증을 재출력했습니다.',
-      [Length(OrderIDs)]), mtInformation, [mbOK], 0);
+    TReceiptPrinter.PrintUnpaidTableOrders(
+      dmDatabase.Connection, FStoreID, SelectedTableID);
+    MessageDlg('선택한 테이블의 미결제 주문저장 내역을 영수증 1장으로 출력했습니다.',
+      mtInformation, [mbOK], 0);
   except
     on E: Exception do
-      MessageDlg('영수증 재출력에 실패했습니다: ' + E.Message,
+      MessageDlg('주문내역 재출력에 실패했습니다: ' + E.Message,
         mtError, [mbOK], 0);
   end;
 end;
-
 
 procedure TfrmSales.ProcessPayment;
 var
