@@ -22,6 +22,8 @@ type
     OriginalQuantity: Integer;
   end;
 
+  TCartItemArray = array of TCartItem;
+
   TOptionGroupControls = record
     GroupName: string;
     Required: Boolean;
@@ -37,7 +39,7 @@ type
     FStoreID: Integer;
     FTerminalID: Integer;
     FEmployeeID: Integer;
-    FCart: array of TCartItem;
+    FCart: TCartItemArray;
     FCartGroups: array of TIntegerArray;
     FTableCombo: TComboBox;
     FTableIDs: TIntegerArray;
@@ -1216,7 +1218,7 @@ procedure TfrmSales.RemoveSelected;
 var
   GroupIndex, I, J, N: Integer;
   KeepItem: Boolean;
-  NewCart: array of TCartItem;
+  NewCart: TCartItemArray;
 begin
   GroupIndex := FCartGrid.Row - 1;
   if (GroupIndex < 0) or (GroupIndex > High(FCartGroups)) then Exit;
