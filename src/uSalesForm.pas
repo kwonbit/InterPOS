@@ -79,62 +79,89 @@ uses
 
 procedure TfrmSales.FormCreate(Sender: TObject);
 var
-  Header, CartPanel, ButtonPanel: TPanel;
+  Header, MainPanel, MenuArea, CartPanel, CartHeader, ButtonPanel: TPanel;
   Lbl: TLabel;
   Btn, PrinterBtn, ReprintBtn: TButton;
 begin
   Caption := 'POS 판매';
   Font.Name := '맑은 고딕';
-  Width := 1180;
-  Height := 760;
+  Font.Size := 10;
+  Width := 1280;
+  Height := 800;
+  Constraints.MinWidth := 1080;
+  Constraints.MinHeight := 680;
   Position := poScreenCenter;
+  Color := $00F1F3F5;
 
   Header := TPanel.Create(Self);
   Header.Parent := Self;
   Header.Align := alTop;
-  Header.Height := 58;
+  Header.Height := 66;
   Header.BevelOuter := bvNone;
+  Header.Color := clWhite;
+  Header.ParentBackground := False;
 
   Lbl := TLabel.Create(Self);
   Lbl.Parent := Header;
-  Lbl.Left := 16;
-  Lbl.Top := 20;
-  Lbl.Caption := '테이블 선택';
+  Lbl.Left := 18;
+  Lbl.Top := 23;
+  Lbl.Caption := '테이블';
   Lbl.Font.Name := Font.Name;
+  Lbl.Font.Size := 11;
+  Lbl.Font.Style := [fsBold];
 
   FTableCombo := TComboBox.Create(Self);
   FTableCombo.Parent := Header;
-  FTableCombo.Left := 110;
-  FTableCombo.Top := 13;
-  FTableCombo.Width := 220;
+  FTableCombo.Left := 78;
+  FTableCombo.Top := 16;
+  FTableCombo.Width := 210;
+  FTableCombo.Height := 34;
   FTableCombo.Style := csDropDownList;
   FTableCombo.Font.Name := Font.Name;
+  FTableCombo.Font.Size := 11;
   FTableCombo.OnChange := TableChanged;
 
   FStatusLabel := TLabel.Create(Self);
   FStatusLabel.Parent := Header;
-  FStatusLabel.Left := 360;
-  FStatusLabel.Top := 20;
+  FStatusLabel.Left := 315;
+  FStatusLabel.Top := 24;
   FStatusLabel.Caption := '주문할 메뉴를 선택하세요.';
   FStatusLabel.Font.Name := Font.Name;
+  FStatusLabel.Font.Size := 10;
 
-  FCategoryPanel := TScrollBox.Create(Self);
-  FCategoryPanel.Parent := Self;
-  FCategoryPanel.Align := alTop;
-  FCategoryPanel.Height := 58;
-  FCategoryPanel.HorzScrollBar.Visible := True;
-  FCategoryPanel.VertScrollBar.Visible := False;
+  MainPanel := TPanel.Create(Self);
+  MainPanel.Parent := Self;
+  MainPanel.Align := alClient;
+  MainPanel.BevelOuter := bvNone;
+  MainPanel.Padding.SetBounds(8, 8, 8, 8);
+  MainPanel.Color := $00F1F3F5;
+  MainPanel.ParentBackground := False;
 
-  FMenuPanel := TScrollBox.Create(Self);
-  FMenuPanel.Parent := Self;
-  FMenuPanel.Align := alClient;
-  FMenuPanel.BorderStyle := bsNone;
-
+  { 주문상품/결제 영역은 오른쪽에 고정하고 메뉴 영역이 남은 폭을 사용한다. }
   CartPanel := TPanel.Create(Self);
-  CartPanel.Parent := Self;
-  CartPanel.Align := alBottom;
-  CartPanel.Height := 280;
+  CartPanel.Parent := MainPanel;
+  CartPanel.Align := alRight;
+  CartPanel.Width := 480;
   CartPanel.BevelOuter := bvNone;
+  CartPanel.Color := clWhite;
+  CartPanel.ParentBackground := False;
+
+  CartHeader := TPanel.Create(Self);
+  CartHeader.Parent := CartPanel;
+  CartHeader.Align := alTop;
+  CartHeader.Height := 48;
+  CartHeader.BevelOuter := bvNone;
+  CartHeader.Color := clWhite;
+  CartHeader.ParentBackground := False;
+
+  Lbl := TLabel.Create(Self);
+  Lbl.Parent := CartHeader;
+  Lbl.Left := 16;
+  Lbl.Top := 14;
+  Lbl.Caption := '주문 상품';
+  Lbl.Font.Name := Font.Name;
+  Lbl.Font.Size := 14;
+  Lbl.Font.Style := [fsBold];
 
   FCartGrid := TStringGrid.Create(Self);
   FCartGrid.Parent := CartPanel;
@@ -143,96 +170,130 @@ begin
   FCartGrid.FixedCols := 0;
   FCartGrid.ColCount := 4;
   FCartGrid.RowCount := 2;
-  FCartGrid.DefaultRowHeight := 28;
+  FCartGrid.DefaultRowHeight := 38;
+  FCartGrid.Font.Name := Font.Name;
+  FCartGrid.Font.Size := 9;
   FCartGrid.Options := FCartGrid.Options + [goRowSelect, goColSizing];
-  FCartGrid.Cells[0, 0] := '메뉴';
+  FCartGrid.Cells[0, 0] := '메뉴 / 옵션';
   FCartGrid.Cells[1, 0] := '단가';
   FCartGrid.Cells[2, 0] := '수량';
   FCartGrid.Cells[3, 0] := '금액';
-  FCartGrid.ColWidths[0] := 430;
-  FCartGrid.ColWidths[1] := 130;
-  FCartGrid.ColWidths[2] := 90;
-  FCartGrid.ColWidths[3] := 150;
+  FCartGrid.ColWidths[0] := 205;
+  FCartGrid.ColWidths[1] := 76;
+  FCartGrid.ColWidths[2] := 52;
+  FCartGrid.ColWidths[3] := 105;
 
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := CartPanel;
   ButtonPanel.Align := alBottom;
-  ButtonPanel.Height := 54;
+  ButtonPanel.Height := 112;
   ButtonPanel.BevelOuter := bvNone;
+  ButtonPanel.Color := clWhite;
+  ButtonPanel.ParentBackground := False;
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
-  Btn.Left := 12;
+  Btn.Left := 10;
   Btn.Top := 7;
-  Btn.Width := 90;
-  Btn.Height := 38;
+  Btn.Width := 78;
+  Btn.Height := 40;
   Btn.Caption := '수량 +';
+  Btn.Font.Name := Font.Name;
   Btn.OnClick := QuantityPlusClick;
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
-  Btn.Left := 108;
+  Btn.Left := 94;
   Btn.Top := 7;
-  Btn.Width := 90;
-  Btn.Height := 38;
+  Btn.Width := 78;
+  Btn.Height := 40;
   Btn.Caption := '수량 -';
+  Btn.Font.Name := Font.Name;
   Btn.OnClick := QuantityMinusClick;
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
-  Btn.Left := 204;
+  Btn.Left := 178;
   Btn.Top := 7;
-  Btn.Width := 90;
-  Btn.Height := 38;
-  Btn.Caption := '삭제';
+  Btn.Width := 78;
+  Btn.Height := 40;
+  Btn.Caption := '선택삭제';
+  Btn.Font.Name := Font.Name;
   Btn.OnClick := RemoveClick;
 
   FTotalLabel := TLabel.Create(Self);
   FTotalLabel.Parent := ButtonPanel;
-  FTotalLabel.Left := 430;
-  FTotalLabel.Top := 17;
+  FTotalLabel.Left := 274;
+  FTotalLabel.Top := 18;
   FTotalLabel.Caption := '합계: 0원';
   FTotalLabel.Font.Name := Font.Name;
-  FTotalLabel.Font.Size := 14;
+  FTotalLabel.Font.Size := 13;
   FTotalLabel.Font.Style := [fsBold];
 
   Btn := TButton.Create(Self);
   Btn.Parent := ButtonPanel;
-  Btn.Left := 900;
-  Btn.Top := 7;
-  Btn.Width := 150;
-  Btn.Height := 38;
+  Btn.Left := 8;
+  Btn.Top := 59;
+  Btn.Width := 108;
+  Btn.Height := 42;
   Btn.Caption := '주문 저장';
+  Btn.Font.Name := Font.Name;
   Btn.Font.Style := [fsBold];
   Btn.OnClick := SaveClick;
 
   PrinterBtn := TButton.Create(Self);
   PrinterBtn.Parent := ButtonPanel;
-  PrinterBtn.Left := 690;
-  PrinterBtn.Top := 7;
-  PrinterBtn.Width := 95;
-  PrinterBtn.Height := 38;
+  PrinterBtn.Left := 122;
+  PrinterBtn.Top := 59;
+  PrinterBtn.Width := 100;
+  PrinterBtn.Height := 42;
   PrinterBtn.Caption := '프린터 설정';
+  PrinterBtn.Font.Name := Font.Name;
   PrinterBtn.OnClick := ConfigurePrinterClick;
 
   ReprintBtn := TButton.Create(Self);
   ReprintBtn.Parent := ButtonPanel;
-  ReprintBtn.Left := 790;
-  ReprintBtn.Top := 7;
-  ReprintBtn.Width := 100;
-  ReprintBtn.Height := 38;
+  ReprintBtn.Left := 228;
+  ReprintBtn.Top := 59;
+  ReprintBtn.Width := 108;
+  ReprintBtn.Height := 42;
   ReprintBtn.Caption := '영수증 재출력';
+  ReprintBtn.Font.Name := Font.Name;
   ReprintBtn.OnClick := ReprintReceiptClick;
 
   FPaymentButton := TButton.Create(Self);
   FPaymentButton.Parent := ButtonPanel;
-  FPaymentButton.Left := 1060;
-  FPaymentButton.Top := 7;
-  FPaymentButton.Width := 100;
-  FPaymentButton.Height := 38;
+  FPaymentButton.Left := 342;
+  FPaymentButton.Top := 59;
+  FPaymentButton.Width := 126;
+  FPaymentButton.Height := 42;
   FPaymentButton.Caption := '결제';
+  FPaymentButton.Font.Name := Font.Name;
   FPaymentButton.Font.Style := [fsBold];
   FPaymentButton.OnClick := PaymentClick;
+
+  MenuArea := TPanel.Create(Self);
+  MenuArea.Parent := MainPanel;
+  MenuArea.Align := alClient;
+  MenuArea.BevelOuter := bvNone;
+  MenuArea.Color := $00F1F3F5;
+  MenuArea.ParentBackground := False;
+
+  FCategoryPanel := TScrollBox.Create(Self);
+  FCategoryPanel.Parent := MenuArea;
+  FCategoryPanel.Align := alTop;
+  FCategoryPanel.Height := 76;
+  FCategoryPanel.BorderStyle := bsNone;
+  FCategoryPanel.Color := clWhite;
+  FCategoryPanel.HorzScrollBar.Visible := True;
+  FCategoryPanel.VertScrollBar.Visible := False;
+
+  FMenuPanel := TScrollBox.Create(Self);
+  FMenuPanel.Parent := MenuArea;
+  FMenuPanel.Align := alClient;
+  FMenuPanel.BorderStyle := bsNone;
+  FMenuPanel.Color := $00F1F3F5;
+  FMenuPanel.HorzScrollBar.Visible := False;
 
   RefreshCart;
 end;
@@ -329,19 +390,22 @@ begin
       'WHERE STORE_ID=:STORE_ID AND ACTIVE_YN=''Y'' ORDER BY DISPLAY_ORDER, CATEGORY_ID';
     Q.ParamByName('STORE_ID').AsInteger := FStoreID;
     Q.Open;
-    X := 8;
+    X := 10;
     while not Q.Eof do
     begin
       Btn := TButton.Create(FCategoryPanel);
       Btn.Parent := FCategoryPanel;
       Btn.Left := X;
-      Btn.Top := 8;
-      Btn.Width := 130;
-      Btn.Height := 38;
+      Btn.Top := 10;
+      Btn.Width := 142;
+      Btn.Height := 54;
       Btn.Caption := Q.FieldByName('CATEGORY_NAME').AsString;
       Btn.Tag := Q.FieldByName('CATEGORY_ID').AsInteger;
+      Btn.Font.Name := Font.Name;
+      Btn.Font.Size := 10;
+      Btn.Font.Style := [fsBold];
       Btn.OnClick := CategoryClick;
-      X := X + 138;
+      X := X + 150;
       Q.Next;
     end;
     if not Q.IsEmpty then
@@ -384,20 +448,23 @@ begin
       Btn.Parent := FMenuPanel;
       Btn.Left := X;
       Btn.Top := Y;
-      Btn.Width := 180;
-      Btn.Height := 88;
+      Btn.Width := 174;
+      Btn.Height := 104;
       Btn.Tag := Q.FieldByName('MENU_ID').AsInteger;
       Btn.Caption := Q.FieldByName('MENU_NAME').AsString + sLineBreak +
         FormatCurr('#,##0', Q.FieldByName('PRICE').AsCurrency) + '원';
+      Btn.Font.Name := Font.Name;
+      Btn.Font.Size := 11;
+      Btn.Font.Style := [fsBold];
       Btn.Enabled := not SameText(Q.FieldByName('SOLD_OUT_YN').AsString, 'Y');
       if not Btn.Enabled then
         Btn.Caption := Btn.Caption + sLineBreak + '[품절]';
       Btn.OnClick := AddMenuClick;
-      X := X + 192;
-      if X + 180 > FMenuPanel.ClientWidth then
+      Inc(X, 186);
+      if X + 174 > FMenuPanel.ClientWidth then
       begin
         X := 12;
-        Y := Y + 98;
+        Inc(Y, 114);
       end;
       Q.Next;
     end;
