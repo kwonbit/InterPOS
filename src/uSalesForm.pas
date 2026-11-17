@@ -36,6 +36,7 @@ type
     FEmployeeID: Integer;
     FCart: array of TCartItem;
     FTableCombo: TComboBox;
+    FTableNameLabel: TLabel;
     FTablePanel: TPanel;
     FSalesPanel: TPanel;
     FTableCards: TScrollBox;
@@ -186,6 +187,15 @@ begin
   Lbl.Font.Name := Font.Name;
   Lbl.Font.Size := 11;
   Lbl.Font.Style := [fsBold];
+
+  FTableNameLabel := TLabel.Create(Self);
+  FTableNameLabel.Parent := Header;
+  FTableNameLabel.Left := 78;
+  FTableNameLabel.Top := 23;
+  FTableNameLabel.Caption := '';
+  FTableNameLabel.Font.Name := Font.Name;
+  FTableNameLabel.Font.Size := 11;
+  FTableNameLabel.Font.Style := [fsBold];
 
   FTableCombo := TComboBox.Create(Self);
   FTableCombo.Parent := Header;
@@ -582,6 +592,7 @@ begin
     if NativeInt(FTableCombo.Items.Objects[I]) = TableID then
     begin
       FTableCombo.ItemIndex := I;
+      FTableNameLabel.Caption := FTableCombo.Items[I];
       Break;
     end;
   SetLength(FCart, 0);
@@ -1712,6 +1723,18 @@ begin
     IfThen(MethodCode = 'CASH', sLineBreak + '거스름돈: ' +
       FormatCurr('#,##0', ReceivedAmount - RemainingAmount) + '원', ''),
     mtInformation, [mbOK], 0);
+
+  { 결제 완료 후 주문 편집 상태를 초기화하고 테이블 현황으로 복귀한다. }
+  SetLength(FCart, 0);
+  SetLength(FLoadedOrderItemIDs, 0);
+  FLoadedOrderID := 0;
+  FLoadOrderButton.Caption := '주문내역';
+  FTableNameLabel.Caption := '';
+  RefreshCart;
+  LoadTables;
+  FSalesPanel.Visible := False;
+  FTablePanel.Visible := True;
+  FTablePanel.BringToFront;
 end;
 
 procedure TfrmSales.SaveOrder;
