@@ -45,6 +45,8 @@ type
     FCategoryPanel: TScrollBox;
     FMenuPanel: TScrollBox;
     FCartGrid: TStringGrid;
+    FLoadOrderButton: TButton;
+    procedure DrawCartCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
     FTotalLabel: TLabel;
     FStatusLabel: TLabel;
   FPaymentButton: TButton;
@@ -95,7 +97,7 @@ var
   Header, MainPanel, MenuArea, CartPanel, CartHeader, ButtonPanel: TPanel;
   TableHeader: TPanel;
   Lbl, TableTitle: TLabel;
-  Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn, LoadOrderBtn: TButton;
+  Btn, PrinterBtn, ReprintBtn, BackBtn, TableDisplayBtn: TButton;
 begin
   Caption := 'POS 판매';
   Font.Name := '맑은 고딕';
@@ -252,15 +254,15 @@ begin
   Lbl.Font.Size := 14;
   Lbl.Font.Style := [fsBold];
 
-  LoadOrderBtn := TButton.Create(Self);
-  LoadOrderBtn.Parent := CartHeader;
-  LoadOrderBtn.Left := 310;
-  LoadOrderBtn.Top := 7;
-  LoadOrderBtn.Width := 154;
-  LoadOrderBtn.Height := 34;
-  LoadOrderBtn.Caption := '기존 주문내역 불러오기';
-  LoadOrderBtn.Font.Name := Font.Name;
-  LoadOrderBtn.OnClick := LoadExistingOrderClick;
+  FLoadOrderButton := TButton.Create(Self);
+  FLoadOrderButton.Parent := CartHeader;
+  FLoadOrderButton.Left := 310;
+  FLoadOrderButton.Top := 7;
+  FLoadOrderButton.Width := 112;
+  FLoadOrderButton.Height := 34;
+  FLoadOrderButton.Caption := '주문내역';
+  FLoadOrderButton.Font.Name := Font.Name;
+  FLoadOrderButton.OnClick := LoadExistingOrderClick;
 
   FCartGrid := TStringGrid.Create(Self);
   FCartGrid.Parent := CartPanel;
@@ -281,6 +283,7 @@ begin
   FCartGrid.ColWidths[1] := 76;
   FCartGrid.ColWidths[2] := 52;
   FCartGrid.ColWidths[3] := 105;
+  FCartGrid.OnDrawCell := DrawCartCell;
 
   ButtonPanel := TPanel.Create(Self);
   ButtonPanel.Parent := CartPanel;
@@ -584,6 +587,7 @@ begin
   SetLength(FCart, 0);
   SetLength(FLoadedOrderItemIDs, 0);
   FLoadedOrderID := 0;
+  FLoadOrderButton.Caption := '주문내역';
   RefreshCart;
   UpdateTableStatus;
   FTablePanel.Visible := False;
@@ -598,9 +602,24 @@ var
   OrderID: Int64;
   N: Integer;
 begin
+  if FLoadedOrderID > 0 then
+  begin
+    if Length(FCart) > 0 then
+      if MessageDlg('현재 화면의 주문 리스트를 초기화할까요? DB의 기존 주문은 변경되지 않습니다.',
+        mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+    SetLength(FCart, 0);
+    SetLength(FLoadedOrderItemIDs, 0);
+    FLoadedOrderID := 0;
+    FLoadOrderButton.Caption := '주문내역';
+    RefreshCart;
+    UpdateTableStatus;
+    FStatusLabel.Caption := '주문 리스트를 화면에서 초기화했습니다. DB 주문내역은 그대로 유지됩니다.';
+    Exit;
+  end;
+
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
-  if Length(FCart) > 0 then
+  if Length(FCart) > 0)
     if MessageDlg('현재 주문 리스트의 미저장 내용은 지워집니다. 기존 주문내역을 불러올까요?',
       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
 
@@ -654,6 +673,7 @@ begin
     Q.Free;
   end;
 
+  FLoadOrderButton.Caption := '초기화';
   RefreshCart;
   FStatusLabel.Caption := '기존 주문내역을 불러왔습니다. 메뉴 추가·수량 변경·삭제 후 주문 저장을 눌러주세요.';
   if Length(FCart) = 0 then
@@ -678,6 +698,7 @@ begin
   SetLength(FCart, 0);
   SetLength(FLoadedOrderItemIDs, 0);
   FLoadedOrderID := 0;
+  FLoadOrderButton.Caption := '주문내역';
   RefreshCart;
   LoadTables;
   FSalesPanel.Visible := False;
@@ -1046,6 +1067,46 @@ begin
   Result := 0;
   for I := 0 to High(FCart) do
     Result := Result + FCart[I].UnitPrice * FCart[I].Quantity;
+end;
+
+
+procedure TfrmSales.DrawCartCell(Sender: TObject; ACol, ARow: Integer;
+  Rect: TRect; State: TGridDrawState);
+var
+  S: string;
+  TextRect: TRect;
+begin
+  if gdFixed in State then
+  begin
+    FCartGrid.Canvas.Brush.Color := $00E9EDF2;
+    FCartGrid.Canvas.Font.Style := [fsBold];
+    FCartGrid.Canvas.Font.Color := clWindowText;
+  end
+  else if gdSelected in State then
+  begin
+    FCartGrid.Canvas.Brush.Color := $00DCEBFA;
+    FCartGrid.Canvas.Font.Style := [];
+    FCartGrid.Canvas.Font.Color := clWindowText;
+  end
+  else
+  begin
+    FCartGrid.Canvas.Brush.Color := clWhite;
+    FCartGrid.Canvas.Font.Style := [];
+    FCartGrid.Canvas.Font.Color := clWindowText;
+  end;
+  FCartGrid.Canvas.FillRect(Rect);
+  S := FCartGrid.Cells[ACol, ARow];
+  TextRect := Rect;
+  InflateRect(TextRect, -6, 0);
+  if ACol >= 1 then
+    DrawText(FCartGrid.Canvas.Handle, PChar(S), Length(S), TextRect,
+      DT_SINGLELINE or DT_VCENTER or DT_RIGHT or DT_END_ELLIPSIS)
+  else
+    DrawText(FCartGrid.Canvas.Handle, PChar(S), Length(S), TextRect,
+      DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS);
+  FCartGrid.Canvas.Pen.Color := $00E5E5E5;
+  FCartGrid.Canvas.MoveTo(Rect.Left, Rect.Bottom - 1);
+  FCartGrid.Canvas.LineTo(Rect.Right, Rect.Bottom - 1);
 end;
 
 procedure TfrmSales.RefreshCart;
@@ -1799,6 +1860,7 @@ begin
   SetLength(FCart, 0);
   SetLength(FLoadedOrderItemIDs, 0);
   FLoadedOrderID := 0;
+  FLoadOrderButton.Caption := '주문내역';
   RefreshCart;
   UpdateTableStatus;
   if KitchenTicketID > 0 then
