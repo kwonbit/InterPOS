@@ -238,8 +238,11 @@ begin
     Q.Close;
 
     Q.SQL.Text :=
-      'SELECT MENU_NAME, UNIT_PRICE, QUANTITY, LINE_AMOUNT, OPTION_TEXT ' +
-      'FROM POS_ORDER_ITEM WHERE ORDER_ID=:ORDER_ID ORDER BY ORDER_ITEM_ID';
+      'SELECT MENU_NAME, UNIT_PRICE, SUM(QUANTITY) AS TOTAL_QTY, ' +
+      'SUM(LINE_AMOUNT) AS TOTAL_LINE_AMOUNT, OPTION_TEXT ' +
+      'FROM POS_ORDER_ITEM WHERE ORDER_ID=:ORDER_ID ' +
+      'GROUP BY MENU_ID, MENU_NAME, UNIT_PRICE, OPTION_TEXT, OPTION_AMOUNT ' +
+      'ORDER BY MENU_NAME, OPTION_TEXT';
     Q.ParamByName('ORDER_ID').AsLargeInt := AOrderID;
     Q.Open;
     while not Q.Eof do
@@ -249,8 +252,8 @@ begin
       AddText(Stream, ItemName + sLineBreak);
       if OptionText <> '' then AddText(Stream, '  ' + OptionText + sLineBreak);
       AddText(Stream, '  ' + FormatCurr('#,##0', Q.FieldByName('UNIT_PRICE').AsCurrency) +
-        ' x ' + FormatCurr('#,##0.###', Q.FieldByName('QUANTITY').AsFloat) +
-        ' = ' + FormatCurr('#,##0', Q.FieldByName('LINE_AMOUNT').AsCurrency) + '원' +
+        ' x ' + FormatCurr('#,##0.###', Q.FieldByName('TOTAL_QTY').AsFloat) +
+        ' = ' + FormatCurr('#,##0', Q.FieldByName('TOTAL_LINE_AMOUNT').AsCurrency) + '원' +
         sLineBreak);
       Q.Next;
     end;
@@ -346,12 +349,14 @@ begin
     Q.Close;
 
     Q.SQL.Text :=
-      'SELECT I.MENU_NAME, I.UNIT_PRICE, I.QUANTITY, I.LINE_AMOUNT, ' +
-      'I.OPTION_TEXT, I.ORDER_ITEM_ID ' +
+      'SELECT I.MENU_ID, I.MENU_NAME, I.UNIT_PRICE, ' +
+      'SUM(I.QUANTITY) AS TOTAL_QTY, SUM(I.LINE_AMOUNT) AS TOTAL_LINE_AMOUNT, ' +
+      'I.OPTION_TEXT, I.OPTION_AMOUNT ' +
       'FROM POS_ORDER O JOIN POS_ORDER_ITEM I ON I.ORDER_ID=O.ORDER_ID ' +
       'WHERE O.STORE_ID=:STORE_ID AND O.TABLE_ID=:TABLE_ID ' +
       'AND O.ORDER_TYPE=''DINE_IN'' AND O.ORDER_STATUS=''OPEN'' ' +
-      'ORDER BY O.ORDERED_AT, O.ORDER_ID, I.ORDER_ITEM_ID';
+      'GROUP BY I.MENU_ID, I.MENU_NAME, I.UNIT_PRICE, I.OPTION_TEXT, I.OPTION_AMOUNT ' +
+      'ORDER BY I.MENU_NAME, I.OPTION_TEXT';
     Q.ParamByName('STORE_ID').AsInteger := AStoreID;
     Q.ParamByName('TABLE_ID').AsInteger := ATableID;
     Q.Open;
