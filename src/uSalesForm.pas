@@ -604,9 +604,6 @@ var
 begin
   if FLoadedOrderID > 0 then
   begin
-    if Length(FCart) > 0 then
-      if MessageDlg('현재 화면의 주문 리스트를 초기화할까요? DB의 기존 주문은 변경되지 않습니다.',
-        mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
     SetLength(FCart, 0);
     SetLength(FLoadedOrderItemIDs, 0);
     FLoadedOrderID := 0;
@@ -1251,34 +1248,46 @@ end;
 procedure TfrmSales.ReprintReceiptClick(Sender: TObject);
 var
   Q: TFDQuery;
-  OrderID: Int64;
+  OrderIDs: TArray<Int64>;
+  I, N: Integer;
 begin
   try
-  if SelectedTableID = 0 then
-    raise Exception.Create('먼저 테이블을 선택해 주세요.');
-  Q := TFDQuery.Create(nil);
-  try
-    Q.Connection := dmDatabase.Connection;
-    Q.SQL.Text := 'SELECT FIRST 1 ORDER_ID FROM POS_ORDER ' +
-      'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID AND ORDER_STATUS=''PAID'' ' +
-      'ORDER BY ORDERED_AT DESC';
-    Q.ParamByName('STORE_ID').AsInteger := FStoreID;
-    Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
-    Q.Open;
-    if Q.IsEmpty then
+    if SelectedTableID = 0 then
+      raise Exception.Create('먼저 테이블을 선택해 주세요.');
+    Q := TFDQuery.Create(nil);
+    try
+      Q.Connection := dmDatabase.Connection;
+      Q.SQL.Text := 'SELECT ORDER_ID FROM POS_ORDER ' +
+        'WHERE STORE_ID=:STORE_ID AND TABLE_ID=:TABLE_ID AND ORDER_STATUS=''PAID'' ' +
+        'ORDER BY ORDERED_AT, ORDER_ID';
+      Q.ParamByName('STORE_ID').AsInteger := FStoreID;
+      Q.ParamByName('TABLE_ID').AsInteger := SelectedTableID;
+      Q.Open;
+      SetLength(OrderIDs, 0);
+      while not Q.Eof do
+      begin
+        N := Length(OrderIDs);
+        SetLength(OrderIDs, N + 1);
+        OrderIDs[N] := Q.FieldByName('ORDER_ID').AsLargeInt;
+        Q.Next;
+      end;
+    finally
+      Q.Free;
+    end;
+    if Length(OrderIDs) = 0 then
       raise Exception.Create('선택한 테이블에 재출력할 결제 완료 주문이 없습니다.');
-    OrderID := Q.FieldByName('ORDER_ID').AsLargeInt;
-  finally
-    Q.Free;
-  end;
-  TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderID);
-  MessageDlg('영수증을 다시 출력했습니다.', mtInformation, [mbOK], 0);
+
+    for I := 0 to High(OrderIDs) do
+      TReceiptPrinter.PrintReceipt(dmDatabase.Connection, FStoreID, OrderIDs[I]);
+    MessageDlg(Format('%d건의 결제 완료 주문 영수증을 재출력했습니다.',
+      [Length(OrderIDs)]), mtInformation, [mbOK], 0);
   except
     on E: Exception do
       MessageDlg('영수증 재출력에 실패했습니다: ' + E.Message,
         mtError, [mbOK], 0);
   end;
 end;
+
 
 procedure TfrmSales.ProcessPayment;
 var
@@ -1300,11 +1309,11 @@ var
   ReceivedEdit: TEdit;
   OkButton, CancelButton: TButton;
   MethodCode: string;
+  I, J: Integer;
+  CartHasChanges, ItemFound: Boolean;
 begin
   if SelectedTableID = 0 then
     raise Exception.Create('먼저 테이블을 선택해 주세요.');
-  if Length(FCart) > 0 then
-    raise Exception.Create('장바구니에 저장하지 않은 메뉴가 있습니다. 먼저 주문 저장을 해주세요.');
 
   Q := TFDQuery.Create(nil);
   try
@@ -1322,6 +1331,43 @@ begin
     OrderNo := Q.FieldByName('ORDER_NO').AsString;
     OrderTotal := Q.FieldByName('TOTAL_AMOUNT').AsCurrency;
     Q.Close;
+
+    CartHasChanges := False;
+    if Length(FCart) > 0 then
+    begin
+      if (FLoadedOrderID = 0) or (FLoadedOrderID <> OrderID) then
+        CartHasChanges := True
+      else
+      begin
+        for I := 0 to High(FCart) do
+          if (not FCart[I].IsPersisted) or
+            (FCart[I].Quantity <> FCart[I].OriginalQuantity) then
+          begin
+            CartHasChanges := True;
+            Break;
+          end;
+
+        if not CartHasChanges then
+          for I := 0 to High(FLoadedOrderItemIDs) do
+          begin
+            ItemFound := False;
+            for J := 0 to High(FCart) do
+              if FCart[J].IsPersisted and
+                (FCart[J].OrderItemID = FLoadedOrderItemIDs[I]) then
+              begin
+                ItemFound := True;
+                Break;
+              end;
+            if not ItemFound then
+            begin
+              CartHasChanges := True;
+              Break;
+            end;
+          end;
+      end;
+    end;
+    if CartHasChanges then
+      raise Exception.Create('장바구니에 저장하지 않은 메뉴 변경이 있습니다. 먼저 주문 저장을 해주세요.');
 
     Q.SQL.Text := 'SELECT COALESCE(SUM(PAYMENT_AMOUNT), 0) FROM POS_PAYMENT ' +
       'WHERE ORDER_ID=:ORDER_ID';
