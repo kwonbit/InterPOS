@@ -8,6 +8,8 @@ uses
   Vcl.ExtCtrls, Vcl.Grids, Vcl.Dialogs, Vcl.CheckLst;
 
 type
+  TIntegerArray = array of Integer;
+
   TCartItem = record
     MenuID: Integer;
     MenuName: string;
@@ -35,6 +37,7 @@ type
     FTerminalID: Integer;
     FEmployeeID: Integer;
     FCart: array of TCartItem;
+    FCartGroups: array of TIntegerArray;
     FTableCombo: TComboBox;
     FTableNameLabel: TLabel;
     FTablePanel: TPanel;
@@ -1119,21 +1122,60 @@ end;
 
 procedure TfrmSales.RefreshCart;
 var
-  I: Integer;
+  I, J, G, N, GroupQty: Integer;
+  Found: Boolean;
+  GroupTotal: Currency;
+  DisplayName: string;
 begin
-  FCartGrid.RowCount := Max(2, Length(FCart) + 1);
+  SetLength(FCartGroups, 0);
   for I := 0 to High(FCart) do
   begin
-    FCartGrid.Cells[0, I + 1] := FCart[I].MenuName;
-    if FCart[I].OptionText <> '' then
-      FCartGrid.Cells[0, I + 1] := FCartGrid.Cells[0, I + 1] +
-        ' [' + FCart[I].OptionText + ']';
-    FCartGrid.Cells[1, I + 1] := FormatCurr('#,##0', FCart[I].UnitPrice);
-    FCartGrid.Cells[2, I + 1] := IntToStr(FCart[I].Quantity);
-    FCartGrid.Cells[3, I + 1] := FormatCurr('#,##0',
-      FCart[I].UnitPrice * FCart[I].Quantity);
+    Found := False;
+    for G := 0 to High(FCartGroups) do
+    begin
+      J := FCartGroups[G][0];
+      if (FCart[J].MenuID = FCart[I].MenuID) and
+        (FCart[J].UnitPrice = FCart[I].UnitPrice) and
+        (FCart[J].OptionAmount = FCart[I].OptionAmount) and
+        SameText(FCart[J].OptionText, FCart[I].OptionText) then
+      begin
+        N := Length(FCartGroups[G]);
+        SetLength(FCartGroups[G], N + 1);
+        FCartGroups[G][N] := I;
+        Found := True;
+        Break;
+      end;
+    end;
+    if not Found then
+    begin
+      G := Length(FCartGroups);
+      SetLength(FCartGroups, G + 1);
+      SetLength(FCartGroups[G], 1);
+      FCartGroups[G][0] := I;
+    end;
   end;
-  if Length(FCart) = 0 then
+
+  FCartGrid.RowCount := Max(2, Length(FCartGroups) + 1);
+  for G := 0 to High(FCartGroups) do
+  begin
+    I := FCartGroups[G][0];
+    GroupQty := 0;
+    GroupTotal := 0;
+    for J := 0 to High(FCartGroups[G]) do
+    begin
+      N := FCartGroups[G][J];
+      Inc(GroupQty, FCart[N].Quantity);
+      GroupTotal := GroupTotal + FCart[N].UnitPrice * FCart[N].Quantity;
+    end;
+    DisplayName := FCart[I].MenuName;
+    if FCart[I].OptionText <> '' then
+      DisplayName := DisplayName + ' [' + FCart[I].OptionText + ']';
+    FCartGrid.Cells[0, G + 1] := DisplayName;
+    FCartGrid.Cells[1, G + 1] := FormatCurr('#,##0', FCart[I].UnitPrice);
+    FCartGrid.Cells[2, G + 1] := IntToStr(GroupQty);
+    FCartGrid.Cells[3, G + 1] := FormatCurr('#,##0', GroupTotal);
+  end;
+  if Length(FCartGroups) = 0 then
   begin
     FCartGrid.Cells[0, 1] := '';
     FCartGrid.Cells[1, 1] := '';
@@ -1145,11 +1187,14 @@ end;
 
 procedure TfrmSales.ChangeQuantity(ADelta: Integer);
 var
-  RowIndex, CartIndex, I: Integer;
+  GroupIndex, CartIndex, I: Integer;
 begin
-  RowIndex := FCartGrid.Row;
-  CartIndex := RowIndex - 1;
-  if (CartIndex < 0) or (CartIndex > High(FCart)) then Exit;
+  GroupIndex := FCartGrid.Row - 1;
+  if (GroupIndex < 0) or (GroupIndex > High(FCartGroups)) then Exit;
+  if Length(FCartGroups[GroupIndex]) = 0 then Exit;
+
+  { 같은 품목으로 저장된 여러 DB 행 중 마지막 행의 수량을 조정한다. }
+  CartIndex := FCartGroups[GroupIndex][High(FCartGroups[GroupIndex])];
   Inc(FCart[CartIndex].Quantity, ADelta);
   if FCart[CartIndex].Quantity <= 0 then
   begin
@@ -1162,13 +1207,31 @@ end;
 
 procedure TfrmSales.RemoveSelected;
 var
-  CartIndex, I: Integer;
+  GroupIndex, I, J, N: Integer;
+  KeepItem: Boolean;
+  NewCart: array of TCartItem;
 begin
-  CartIndex := FCartGrid.Row - 1;
-  if (CartIndex < 0) or (CartIndex > High(FCart)) then Exit;
-  for I := CartIndex to High(FCart) - 1 do
-    FCart[I] := FCart[I + 1];
-  SetLength(FCart, Length(FCart) - 1);
+  GroupIndex := FCartGrid.Row - 1;
+  if (GroupIndex < 0) or (GroupIndex > High(FCartGroups)) then Exit;
+
+  { 선택한 합산 품목에 포함된 모든 실제 주문 항목을 화면에서 제거한다. }
+  for I := 0 to High(FCart) do
+  begin
+    KeepItem := True;
+    for J := 0 to High(FCartGroups[GroupIndex]) do
+      if FCartGroups[GroupIndex][J] = I then
+      begin
+        KeepItem := False;
+        Break;
+      end;
+    if KeepItem then
+    begin
+      N := Length(NewCart);
+      SetLength(NewCart, N + 1);
+      NewCart[N] := FCart[I];
+    end;
+  end;
+  FCart := NewCart;
   RefreshCart;
 end;
 
